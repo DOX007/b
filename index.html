@@ -1,0 +1,96 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Org Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+</head>
+<body>
+  <h1>Org Admin</h1>
+
+  <section id="auth">
+    <h2>Logga in (admin)</h2>
+    <input id="email" placeholder="admin email" />
+    <input id="password" placeholder="password" type="password" />
+    <button id="login">Logga in</button>
+    <button id="logout">Logga ut</button>
+    <div id="me"></div>
+  </section>
+
+  <section id="create">
+    <h2>Skapa konto</h2>
+    <input id="newEmail" placeholder="email" />
+    <input id="newPass" placeholder="temp password" type="password" />
+    <input id="newOrg" placeholder="orgId" />
+    <select id="newRole">
+      <option value="staff">staff</option>
+      <option value="admin">admin</option>
+    </select>
+    <button id="createBtn">Skapa</button>
+    <div id="createRes"></div>
+  </section>
+
+  <section id="list">
+    <h2>Användare</h2>
+    <button id="reload">Ladda lista</button>
+    <pre id="users"></pre>
+  </section>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, getIdTokenResult } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
+    import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-functions.js";
+
+    const firebaseConfig = {
+      apiKey: "YOUR_KEY",
+      authDomain: "YOUR_PROJECT.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      appId: "YOUR_APP_ID"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const functions = getFunctions(app);
+
+    const $ = id => document.getElementById(id);
+
+    $("login").onclick = async () => {
+      await signInWithEmailAndPassword(auth, $("email").value, $("password").value);
+    };
+    $("logout").onclick = () => signOut(auth);
+
+    async function refreshMe(user) {
+      if (!user) { $("me").textContent = "Inte inloggad"; return; }
+      const token = await getIdTokenResult(user, true);
+      $("me").textContent = `UID: ${user.uid} | claims: ${JSON.stringify(token.claims)}`;
+    }
+    onAuthStateChanged(auth, refreshMe);
+
+    $("createBtn").onclick = async () => {
+      const callable = httpsCallable(functions, "createUserWithClaims");
+      try {
+        const res = await callable({
+          email: $("newEmail").value,
+          password: $("newPass").value,
+          orgId: $("newOrg").value,
+          role: $("newRole").value
+        });
+        $("createRes").textContent = "Skapat: " + res.data.uid;
+      } catch (e) {
+        $("createRes").textContent = "Fel: " + e.message;
+      }
+    };
+
+    $("reload").onclick = async () => {
+      const callable = httpsCallable(functions, "listUsers");
+      try {
+        const res = await callable({ limit: 100 });
+        $("users").textContent = JSON.stringify(res.data.users, null, 2);
+      } catch (e) {
+        $("users").textContent = "Fel: " + e.message;
+      }
+    };
+  </script>
+</body>
+</html>
+
