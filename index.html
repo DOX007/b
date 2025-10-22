@@ -98,7 +98,7 @@
       getFunctions, httpsCallable
     } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-functions.js";
 
-    // === Firebase-konfiguration (från ditt projekt) ===
+    // === Firebase-konfiguration (ditt projekt) ===
     const firebaseConfig = {
       apiKey: "AIzaSyD837dSDubNSKKRxZuxaOym25vF87eTfqI",
       authDomain: "vordnotes.firebaseapp.com",
@@ -116,8 +116,6 @@
 
     // Viktigt: dina Cloud Functions ligger i us-central1
     const functions = getFunctions(app, "us-central1");
-
-    // Callable references
     const cfCreateUserWithClaims = httpsCallable(functions, "createUserWithClaims");
     const cfListUsers = httpsCallable(functions, "listUsers");
 
@@ -131,10 +129,10 @@
     const listMsgEl = $("listMsg");
     const usersEl = $("users");
 
-    const setMsg = (el, msg, type="muted") => { el.textContent = msg || ""; el.className = type; };
-    const asErr = (e) => (e?.message || (typeof e === "string" ? e : (()=>{ try{return JSON.stringify(e)}catch{return String(e)} })()));
+    const setMsg = (el, msg, cls="muted") => { el.textContent = msg || ""; el.className = cls; };
+    const asErr = (e) => e?.message || (typeof e === "string" ? e : (()=>{ try{return JSON.stringify(e)}catch{return String(e)} })());
 
-    // === Auth state ===
+    // === Auth state (force refresh så claims blir färska) ===
     onAuthStateChanged(auth, async (user) => {
       if (!user) {
         meEl.textContent = "Inte inloggad.";
@@ -147,8 +145,7 @@
       }
 
       try {
-        // Kritisk: forceRefresh=true för att se nya claims direkt
-        const tokenRes = await getIdTokenResult(user, true);
+        const tokenRes = await getIdTokenResult(user, true); // <- force refresh
         const claims = tokenRes.claims || {};
         const isAdmin = claims.role === "admin";
         const orgId = claims.orgId ?? null;
@@ -171,7 +168,7 @@ orgId: ${orgId ?? "(saknas)"}`
       }
     });
 
-    // === Actions ===
+    // === Handlers ===
     $("login").addEventListener("click", async () => {
       setMsg(authMsgEl, "Loggar in…");
       try {
@@ -193,7 +190,7 @@ orgId: ${orgId ?? "(saknas)"}`
 
     $("createBtn").addEventListener("click", async () => {
       const email = $("newEmail").value.trim();
-      const password = $("newPass").value;
+      const password = $("newPass").value;          // <- skickas som password
       const orgId = $("newOrg").value.trim();
       const role = $("newRole").value;
 
@@ -219,14 +216,15 @@ orgId: ${orgId ?? "(saknas)"}`
         const resp = await cfListUsers({});
         const list = resp?.data?.users || resp?.data || [];
         if (!Array.isArray(list) || list.length === 0) {
-          setMsg(listMsgEl, "Inga användare hittades.", "muted");
+          setMsg(listMsgEl, "Inga användare hittades.");
           return;
         }
+
         list.forEach(u => {
           const li = document.createElement("li");
           const email = u.email || "(okänd e-post)";
           const uid = u.uid || "(okänt uid)";
-          const claims = u.claims || {};
+          const claims = u.claims || u.customClaims || {};
           const isAdmin = claims.role === "admin";
           const orgId = claims.orgId || "(saknas)";
           li.innerHTML = `
@@ -237,6 +235,7 @@ orgId: ${orgId ?? "(saknas)"}`
           `;
           usersEl.appendChild(li);
         });
+
         setMsg(listMsgEl, `Klar. (${list.length} användare)`, "ok");
       } catch (e) {
         setMsg(listMsgEl, "Kunde inte hämta lista: " + asErr(e), "err");
