@@ -1,106 +1,273 @@
 <!doctype html>
-<html>
+<html lang="sv">
 <head>
   <meta charset="utf-8" />
   <title>Org Admin</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; max-width: 900px; margin: 24px auto; padding: 0 16px; }
+    h1 { margin-bottom: 8px; }
+    section { border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; margin: 16px 0; }
+    label { display:block; font-size: 12px; color:#374151; margin: 8px 0 4px; }
+    input, select, button, textarea { font: inherit; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 8px; }
+    input, select, textarea { width: 100%; box-sizing: border-box; }
+    button { cursor: pointer; background: #111827; color: white; border: none; }
+    button.secondary { background: #6b7280; }
+    button:disabled { opacity: 0.55; cursor: not-allowed; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+    .muted { color: #6b7280; font-size: 14px; }
+    .ok { color: #065f46; }
+    .err { color: #991b1b; white-space: pre-wrap; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
+    ul { padding-left: 20px; }
+    .pill { display:inline-block; padding:2px 8px; border-radius:999px; border:1px solid #d1d5db; font-size:12px; margin-left:6px; }
+    .grid { display: grid; gap: 8px; }
+  </style>
 </head>
 <body>
   <h1>Org Admin</h1>
+  <p class="muted">Logga in som admin, skapa användare och lista användare inom din organisation.</p>
 
   <section id="auth">
     <h2>Logga in (admin)</h2>
-    <input id="email" placeholder="admin email" />
-    <input id="password" placeholder="password" type="password" />
-    <button id="login">Logga in</button>
-    <button id="logout">Logga ut</button>
-    <div id="me"></div>
+    <div class="row">
+      <div>
+        <label for="email">Admin e-post</label>
+        <input id="email" placeholder="admin@example.com" autocomplete="username" />
+      </div>
+      <div>
+        <label for="password">Lösenord</label>
+        <input id="password" placeholder="••••••••" type="password" autocomplete="current-password" />
+      </div>
+    </div>
+    <div class="actions">
+      <button id="login">Logga in</button>
+      <button id="logout" class="secondary">Logga ut</button>
+    </div>
+    <div id="authMsg" class="muted" style="margin-top:8px;"></div>
+    <div id="me" class="mono" style="margin-top:12px;"></div>
   </section>
-
-
 
   <section id="create">
     <h2>Skapa konto</h2>
-    <input id="newEmail" placeholder="email" />
-    <input id="newPass" placeholder="temp password" type="password" />
-    <input id="newOrg" placeholder="orgId" />
-    <select id="newRole">
-      <option value="staff">staff</option>
-      <option value="admin">admin</option>
-    </select>
-    <button id="createBtn">Skapa</button>
-    <div id="createRes"></div>
+    <div class="grid">
+      <div>
+        <label for="newEmail">E-post</label>
+        <input id="newEmail" placeholder="anvandare@example.com" />
+      </div>
+      <div>
+        <label for="newPass">Temporärt lösenord</label>
+        <input id="newPass" placeholder="Minst 6 tecken" type="password" />
+      </div>
+      <div>
+        <label for="newOrg">Organisation (orgId)</label>
+        <input id="newOrg" placeholder="t.ex. acme" />
+      </div>
+      <div>
+        <label for="newRole">Roll</label>
+        <select id="newRole">
+          <option value="staff">staff</option>
+          <option value="admin">admin</option>
+        </select>
+      </div>
+    </div>
+    <div class="actions">
+      <button id="createBtn">Skapa användare</button>
+    </div>
+    <div id="createMsg" style="margin-top:8px;"></div>
   </section>
-
-CFG apiKey: AIzaSyB837dSDubNSKKRxZuxaQym25vF87eTfqI
-CFG authDomain: vordnotes.firebaseapp.com
-CFG projectId: vordnotes
 
   <section id="list">
-    <h2>Användare</h2>
-    <button id="reload">Ladda lista</button>
-    <pre id="users"></pre>
+    <h2>Lista användare</h2>
+    <div class="actions">
+      <button id="listBtn">Ladda lista</button>
+    </div>
+    <div id="listMsg" class="muted" style="margin-top:8px;"></div>
+    <ul id="users" style="margin-top:8px;"></ul>
   </section>
 
+  <!-- Firebase v10 ESM-moduler -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, getIdTokenResult } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
-    import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-functions.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-analytics.js";
+    import {
+      getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, getIdTokenResult
+    } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
+    import {
+      getFunctions, httpsCallable
+    } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-functions.js";
 
-
+    // === Din Firebase-konfiguration ===
+    // Verifiera storageBucket i Firebase Console -> Storage -> Inställningar
     const firebaseConfig = {
       apiKey: "AIzaSyD837dSDubNSKKRxZuxaOym25vF87eTfqI",
       authDomain: "vordnotes.firebaseapp.com",
       projectId: "vordnotes",
-      storageBucket: "vordnotes.firebasestorage.app",
+      storageBucket: "vordnotes.appspot.com", // ⟵ dubbelkolla! (vanligtvis <project-id>.appspot.com)
       messagingSenderId: "336975924503",
       appId: "1:336975924503:web:e283bcb380ce1e56dc3b52",
       measurementId: "G-DNGLKMVW95"
-};
+    };
 
+    // === Init ===
     const app = initializeApp(firebaseConfig);
+    // Analytics kräver https/localhost + kompatibel miljö. Om det kraschar kan du kommentera bort raden nedan.
+    try { getAnalytics(app); } catch (_) {}
+
     const auth = getAuth(app);
+
+    // Om dina Cloud Functions ligger i en specifik region:
+    // const functions = getFunctions(app, "europe-west1");
     const functions = getFunctions(app);
 
-    const $ = id => document.getElementById(id);
+    // Callable references
+    const cfCreateUserWithClaims = httpsCallable(functions, "createUserWithClaims");
+    const cfListUsers = httpsCallable(functions, "listUsers");
 
-    $("login").onclick = async () => {
-      await signInWithEmailAndPassword(auth, $("email").value, $("password").value);
-    };
-    $("logout").onclick = () => signOut(auth);
+    // === UI helpers ===
+    const $ = (id) => document.getElementById(id);
+    const emailEl = $("email");
+    const passEl = $("password");
+    const meEl = $("me");
+    const authMsgEl = $("authMsg");
+    const createMsgEl = $("createMsg");
+    const listMsgEl = $("listMsg");
+    const usersEl = $("users");
 
-    async function refreshMe(user) {
-      if (!user) { $("me").textContent = "Inte inloggad"; return; }
-      const token = await getIdTokenResult(user, true);
-      $("me").textContent = `UID: ${user.uid} | claims: ${JSON.stringify(token.claims)}`;
+    function setAuthMsg(msg, ok=false, err=false) {
+      authMsgEl.textContent = msg || "";
+      authMsgEl.className = ok ? "ok" : (err ? "err" : "muted");
     }
-    onAuthStateChanged(auth, refreshMe);
+    function setCreateMsg(msg, ok=false, err=false) {
+      createMsgEl.textContent = msg || "";
+      createMsgEl.className = ok ? "ok" : (err ? "err" : "muted");
+    }
+    function setListMsg(msg, ok=false, err=false) {
+      listMsgEl.textContent = msg || "";
+      listMsgEl.className = ok ? "ok" : (err ? "err" : "muted");
+    }
+    function asErr(e) {
+      if (!e) return "Okänt fel.";
+      if (typeof e === "string") return e;
+      if (e.message) return e.message;
+      try { return JSON.stringify(e); } catch { return String(e); }
+    }
 
-    $("createBtn").onclick = async () => {
-      const callable = httpsCallable(functions, "createUserWithClaims");
+    // === Auth state ===
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        meEl.textContent = "Inte inloggad.";
+        $("login").disabled = false;
+        $("logout").disabled = true;
+        $("createBtn").disabled = true;
+        $("listBtn").disabled = true;
+        setAuthMsg("");
+        return;
+      }
+
       try {
-        const res = await callable({
-          email: $("newEmail").value,
-          password: $("newPass").value,
-          orgId: $("newOrg").value,
-          role: $("newRole").value
+        const tokenRes = await getIdTokenResult(user, true);
+        const claims = tokenRes.claims || {};
+        const isAdmin = !!claims.admin;
+        const orgId = claims.orgId || claims.org || null;
+
+        meEl.textContent =
+`Inloggad som: ${user.email}
+uid: ${user.uid}
+admin: ${isAdmin}
+orgId: ${orgId !== null ? orgId : "(saknas)"}`
+        ;
+
+        $("login").disabled = true;
+        $("logout").disabled = false;
+
+        // Tillåt admin att skapa/lista
+        $("createBtn").disabled = !isAdmin;
+        $("listBtn").disabled = !isAdmin;
+
+        setAuthMsg("Inloggning OK.", true);
+      } catch (e) {
+        setAuthMsg("Misslyckades att läsa token/claims: " + asErr(e), false, true);
+      }
+    });
+
+    // === Handlers ===
+    $("login").addEventListener("click", async () => {
+      setAuthMsg("Loggar in…");
+      try {
+        await signInWithEmailAndPassword(auth, emailEl.value.trim(), passEl.value);
+        setAuthMsg("Inloggad.", true);
+      } catch (e) {
+        setAuthMsg("Inloggning misslyckades: " + asErr(e), false, true);
+      }
+    });
+
+    $("logout").addEventListener("click", async () => {
+      try {
+        await signOut(auth);
+        setAuthMsg("Utloggad.", true);
+      } catch (e) {
+        setAuthMsg("Utloggning misslyckades: " + asErr(e), false, true);
+      }
+    });
+
+    $("createBtn").addEventListener("click", async () => {
+      const email = $("newEmail").value.trim();
+      const tempPassword = $("newPass").value;
+      const orgId = $("newOrg").value.trim();
+      const role = $("newRole").value;
+
+      if (!email || !tempPassword || !orgId || !role) {
+        setCreateMsg("Fyll i alla fält.", false, true);
+        return;
+      }
+
+      setCreateMsg("Skapar användare…");
+      try {
+        // OBS: payload måste matcha din serversides-funktion.
+        const resp = await cfCreateUserWithClaims({ email, tempPassword, orgId, role });
+        const data = resp?.data || {};
+        setCreateMsg(`Skapad: ${data.email || email} (uid: ${data.uid || "okänd"})`, true);
+      } catch (e) {
+        setCreateMsg("Kunde inte skapa användare: " + asErr(e), false, true);
+      }
+    });
+
+    $("listBtn").addEventListener("click", async () => {
+      usersEl.innerHTML = "";
+      setListMsg("Hämtar användare…");
+      try {
+        // Om din function kräver filter (t.ex. orgId), lägg till i payload: { orgId: "..." }
+        const resp = await cfListUsers({});
+        const list = resp?.data?.users || resp?.data || [];
+
+        if (!Array.isArray(list) || list.length === 0) {
+          setListMsg("Inga användare hittades.");
+          return;
+        }
+
+        list.forEach(u => {
+          const li = document.createElement("li");
+          const email = u.email || "(okänd e-post)";
+          const uid = u.uid || "(okänt uid)";
+          const claims = u.customClaims || u.claims || {};
+          const isAdmin = !!claims.admin;
+          const orgId = claims.orgId || claims.org || "(saknas)";
+          li.innerHTML = `
+            <span class="mono">${email}</span>
+            <span class="pill">${isAdmin ? "admin" : "staff"}</span>
+            <span class="pill">org: ${orgId}</span>
+            <div class="muted mono">uid: ${uid}</div>
+          `;
+          usersEl.appendChild(li);
         });
-        $("createRes").textContent = "Skapat: " + res.data.uid;
-      } catch (e) {
-        $("createRes").textContent = "Fel: " + e.message;
-      }
-    };
 
-    $("reload").onclick = async () => {
-      const callable = httpsCallable(functions, "listUsers");
-      try {
-        const res = await callable({ limit: 100 });
-        $("users").textContent = JSON.stringify(res.data.users, null, 2);
+        setListMsg(`Klar. (${list.length} användare)`, true);
       } catch (e) {
-        $("users").textContent = "Fel: " + e.message;
+        setListMsg("Kunde inte hämta lista: " + asErr(e), false, true);
       }
-    };
+    });
   </script>
 </body>
 </html>
-
