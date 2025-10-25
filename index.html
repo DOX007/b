@@ -90,7 +90,7 @@
     import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
     import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
 
-    // TODO: Lägg in din riktiga config här (eller låt den injiceras vid deploy)
+    // Prod-konfig (som i din senaste fil)
     const firebaseConfig = {
       apiKey: "AIzaSyD837dSDubNSKKRxZuxaOym25vF87eTfqI",
       authDomain: "vordnotes.firebaseapp.com",
@@ -184,12 +184,13 @@
           const isAdmin = (claims.role === "admin");
           const orgId = claims.orgId || "(saknas)";
 
+          // ★ Knappen först (vänster)
           li.innerHTML = `
             <div class="bar">
+              <button class="secondary delBtn" data-uid="${uid}" data-email="${email}" ${isAdmin ? "disabled" : ""}>Ta bort</button>
               <span class="mono">${email}</span>
               <span class="pill">${isAdmin ? "admin" : "staff"}</span>
               <span class="pill">org: ${orgId}</span>
-              <button class="secondary delBtn" data-uid="${uid}" data-email="${email}" ${isAdmin ? "disabled" : ""}>Ta bort</button>
             </div>
             <div class="muted mono">uid: ${uid}</div>
           `;
