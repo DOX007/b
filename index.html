@@ -2,31 +2,33 @@
 <html lang="sv">
 <head>
   <meta charset="utf-8" />
-  <title>VordNotes</title>
+  <title>VordNotes – Org Admin</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
+    :root { color-scheme: dark light; }
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; max-width: 900px; margin: 24px auto; padding: 0 16px; }
     h1 { margin-bottom: 8px; }
-    section { border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; margin: 16px 0; }
-    label { display:block; font-size: 12px; color:#374151; margin: 8px 0 4px; }
-    input, select, button, textarea { font: inherit; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 8px; }
-    input, select, textarea { width: 100%; box-sizing: border-box; }
+    section { border: 1px solid #2a2a2a; border-radius: 12px; padding: 16px; margin: 16px 0; }
+    label { display:block; font-size: 12px; opacity:.9; margin: 8px 0 4px; }
+    input, select, button { font: inherit; padding: 8px 10px; border-radius: 8px; }
+    input, select { width: 100%; box-sizing: border-box; border: 1px solid #3a3a3a; background: transparent; color: inherit; }
     button { cursor: pointer; background: #111827; color: white; border: none; }
     button.secondary { background: #6b7280; }
-    button:disabled { opacity: 0.55; cursor: not-allowed; }
+    button:disabled { opacity: .55; cursor: not-allowed; }
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
-    .muted { color: #6b7280; font-size: 14px; }
-    .ok { color: #065f46; }
-    .err { color: #991b1b; white-space: pre-wrap; }
+    .muted { opacity: .8; font-size: 14px; }
+    .ok { color: #10b981; }
+    .err { color: #ef4444; white-space: pre-wrap; }
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
     ul { padding-left: 20px; }
-    .pill { display:inline-block; padding:2px 8px; border-radius:999px; border:1px solid #d1d5db; font-size:12px; margin-left:6px; }
+    .pill { display:inline-block; padding:2px 8px; border-radius:999px; border:1px solid #3a3a3a; font-size:12px; margin-left:6px; }
     .grid { display: grid; gap: 8px; }
   </style>
 </head>
 <body>
-  <h1>VordNotes</h1>
+  <h1>VordNotes – Org Admin</h1>
+  <p class="muted">Logga in som admin, skapa användare och lista användare inom din organisation.</p>
 
   <section id="auth">
     <h2>Logga in (admin)</h2>
@@ -94,10 +96,10 @@
       getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, getIdTokenResult
     } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
     import {
-      getFunctions, httpsCallableFromURL
+      getFunctions, httpsCallable
     } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-functions.js";
 
-    // === Firebase-konfiguration ===
+    // === Firebase-konfig (ditt projekt) ===
     const firebaseConfig = {
       apiKey: "AIzaSyD837dSDubNSKKRxZuxaOym25vF87eTfqI",
       authDomain: "vordnotes.firebaseapp.com",
@@ -113,18 +115,12 @@
     try { getAnalytics(app); } catch (_) {}
     const auth = getAuth(app);
 
-    // Viktigt: dina Cloud Functions ligger i us-central1
+    // Viktigt: set region till samma som Functions (us-central1)
     const functions = getFunctions(app, "us-central1");
 
-    // ---- V2 callable endpoints (a.run.app) ----
-    const cfCreateUserWithClaims = httpsCallableFromURL(
-      functions,
-      "https://createuserwithclaims-jprh5uhteq-uc.a.run.app"
-    );
-    const cfListUsers = httpsCallableFromURL(
-      functions,
-      "https://listusers-jprh5uhteq-uc.a.run.app"
-    );
+    // Namn-baserade callables (SDK sköter v2-routing & headers)
+    const cfCreateUserWithClaims = httpsCallable(functions, "createUserWithClaims");
+    const cfListUsers           = httpsCallable(functions, "listUsers");
 
     // === UI helpers ===
     const $ = (id) => document.getElementById(id);
@@ -138,8 +134,10 @@
 
     const setMsg = (el, msg, cls="muted") => { el.textContent = msg || ""; el.className = cls; };
     const asErr = (e) => {
+      // Visa tydligt felkod + text
       if (!e) return "okänt fel";
-      if (e.code || e.message) return [e.code, e.message].filter(Boolean).join(": ");
+      // Firebase web SDK fel
+      if (e.code || e.message) return `${e.code ?? "error"}: ${e.message ?? ""}`.trim();
       try { return JSON.stringify(e); } catch { return String(e); }
     };
 
