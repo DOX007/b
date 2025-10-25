@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root { color-scheme: dark light; }
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; max-width: 900px; margin: 24px auto; padding: 0 16px; }
+    body { font-family: system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; max-width: 900px; margin: 24px auto; padding: 0 16px; }
     h1 { margin-bottom: 8px; }
     section { border: 1px solid #2a2a2a; border-radius: 12px; padding: 16px; margin: 16px 0; }
     label { display:block; font-size: 12px; opacity:.9; margin: 8px 0 4px; }
@@ -15,232 +15,209 @@
     button { cursor: pointer; background: #111827; color: white; border: none; }
     button.secondary { background: #6b7280; }
     button:disabled { opacity: .55; cursor: not-allowed; }
-    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
-    .muted { opacity: .8; font-size: 14px; }
-    .ok { color: #10b981; }
-    .err { color: #ef4444; white-space: pre-wrap; }
-    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
-    ul { padding-left: 20px; }
-    .pill { display:inline-block; padding:2px 8px; border-radius:999px; border:1px solid #3a3a3a; font-size:12px; margin-left:6px; }
-    .grid { display: grid; gap: 8px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; align-items: end; }
+    .row > * { min-width: 0; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+    .muted { opacity: .75; font-size: 12px; }
+    .pill { display:inline-block; padding: 2px 8px; border-radius: 999px; background:#374151; font-size: 12px; }
+    ul { padding-left: 18px; }
+    li { margin: 10px 0; }
+    .bar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
   </style>
 </head>
 <body>
   <h1>VordNotes – Org Admin</h1>
   <p class="muted">Logga in som admin, skapa användare och lista användare inom din organisation.</p>
 
-  <section id="auth">
+  <!-- LOGIN -------------------------------------------------------------->
+  <section>
     <h2>Logga in (admin)</h2>
     <div class="row">
       <div>
-        <label for="email">Admin e-post</label>
-        <input id="email" placeholder="admin@example.com" autocomplete="username" />
+        <label>Admin e-post</label>
+        <input id="email" class="mono" placeholder="admin@example.com" />
       </div>
       <div>
-        <label for="password">Lösenord</label>
-        <input id="password" placeholder="••••••••" type="password" autocomplete="current-password" />
+        <label>Lösenord</label>
+        <input id="password" type="password" />
       </div>
+      <button id="loginBtn">Logga in</button>
+      <button id="logoutBtn" class="secondary">Logga ut</button>
     </div>
-    <div class="actions">
-      <button id="login">Logga in</button>
-      <button id="logout" class="secondary">Logga ut</button>
-    </div>
-    <div id="authMsg" class="muted" style="margin-top:8px;"></div>
-    <div id="me" class="mono" style="margin-top:12px;"></div>
+    <p id="loginMsg" class="muted"> </p>
   </section>
 
-  <section id="create">
+  <!-- CREATE USER -------------------------------------------------------->
+  <section>
     <h2>Skapa konto</h2>
-    <div class="grid">
+    <div class="row">
       <div>
-        <label for="newEmail">E-post</label>
-        <input id="newEmail" placeholder="anvandare@example.com" />
+        <label>E-post</label>
+        <input id="newEmail" class="mono" placeholder="user@example.com" />
       </div>
       <div>
-        <label for="newPass">Temporärt lösenord</label>
-        <input id="newPass" placeholder="Minst 6 tecken" type="password" />
+        <label>Temporärt lösenord</label>
+        <input id="newPassword" type="password" value="TempPass123!" />
       </div>
       <div>
-        <label for="newOrg">Organisation (orgId)</label>
-        <input id="newOrg" value="vordnotes-dev" placeholder="t.ex. vordnotes-dev" />
+        <label>Organisation (orgId)</label>
+        <input id="orgId" class="mono" placeholder="vordnotes-dev" />
       </div>
       <div>
-        <label for="newRole">Roll</label>
-        <select id="newRole">
+        <label>Roll</label>
+        <select id="role">
           <option value="staff">staff</option>
           <option value="admin">admin</option>
         </select>
       </div>
-    </div>
-    <div class="actions">
       <button id="createBtn">Skapa användare</button>
     </div>
-    <div id="createMsg" style="margin-top:8px;"></div>
+    <p id="createMsg" class="muted"> </p>
   </section>
 
-  <section id="list">
+  <!-- LIST USERS --------------------------------------------------------->
+  <section>
     <h2>Lista användare</h2>
-    <div class="actions">
-      <button id="listBtn">Ladda lista</button>
-    </div>
-    <div id="listMsg" class="muted" style="margin-top:8px;"></div>
-    <ul id="users" style="margin-top:8px;"></ul>
+    <button id="listBtn" class="secondary">Ladda lista</button>
+    <p id="listMsg" class="muted"> </p>
+    <ul id="users"></ul>
   </section>
 
-  <!-- Firebase v10 ESM-moduler -->
+  <!-- Firebase SDK -->
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
-    import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-analytics.js";
-    import {
-      getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, getIdTokenResult
-    } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
-    import {
-      getFunctions, httpsCallable
-    } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-functions.js";
+    // === Firebase (byt till ditt projekt)
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
 
-    // === Firebase-konfig (ditt projekt) ===
+    // TODO: Lägg in din riktiga config här (eller låt den injiceras vid deploy)
     const firebaseConfig = {
-      apiKey: "AIzaSyD837dSDubNSKKRxZuxaOym25vF87eTfqI",
-      authDomain: "vordnotes.firebaseapp.com",
-      projectId: "vordnotes",
-      storageBucket: "vordnotes.appspot.com",
-      messagingSenderId: "336975924503",
-      appId: "1:336975924503:web:e283bcb380ce1e56dc3b52",
-      measurementId: "G-DNGLKMVW95"
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT.firebaseapp.com",
+      projectId: "YOUR_PROJECT",
+      appId: "YOUR_APP_ID",
     };
 
-    // === Init ===
     const app = initializeApp(firebaseConfig);
-    try { getAnalytics(app); } catch (_) {}
     const auth = getAuth(app);
+    const functions = getFunctions(app);
 
-    // Viktigt: set region till samma som Functions (us-central1)
-    const functions = getFunctions(app, "us-central1");
-
-    // Namn-baserade callables (SDK sköter v2-routing & headers)
+    // Callables
     const cfCreateUserWithClaims = httpsCallable(functions, "createUserWithClaims");
-    const cfListUsers           = httpsCallable(functions, "listUsers");
+    const cfListUsers            = httpsCallable(functions, "listUsers");
+    const cfDeleteUserByUid      = httpsCallable(functions, "deleteUserByUid");
 
-    // === UI helpers ===
+    // Helpers
     const $ = (id) => document.getElementById(id);
-    const emailEl = $("email");
-    const passEl = $("password");
-    const meEl = $("me");
-    const authMsgEl = $("authMsg");
-    const createMsgEl = $("createMsg");
-    const listMsgEl = $("listMsg");
-    const usersEl = $("users");
-
-    const setMsg = (el, msg, cls="muted") => { el.textContent = msg || ""; el.className = cls; };
-    const asErr = (e) => {
-      // Visa tydligt felkod + text
-      if (!e) return "okänt fel";
-      // Firebase web SDK fel
-      if (e.code || e.message) return `${e.code ?? "error"}: ${e.message ?? ""}`.trim();
-      try { return JSON.stringify(e); } catch { return String(e); }
+    const setMsg = (el, msg, kind="") => {
+      el.textContent = msg;
+      el.style.color = kind === "err" ? "#ef4444" : kind === "ok" ? "#10b981" : "inherit";
     };
+    const asErr = (e) => (e?.message || e?.toString?.() || String(e));
 
-    // === Auth state (force refresh så claims blir färska) ===
-    onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        meEl.textContent = "Inte inloggad.";
-        $("login").disabled = false;
-        $("logout").disabled = true;
-        $("createBtn").disabled = true;
-        $("listBtn").disabled = true;
-        setMsg(authMsgEl, "");
-        return;
-      }
+    // STATE
+    const loginMsgEl  = $("loginMsg");
+    const createMsgEl = $("createMsg");
+    const listMsgEl   = $("listMsg");
+    const usersEl     = $("users");
 
-      try {
-        const tokenRes = await getIdTokenResult(user, true); // force refresh
-        const claims = tokenRes.claims || {};
-        const isAdmin = claims.role === "admin" || claims.admin === true;
-        const orgId = claims.orgId ?? null;
-
-        meEl.textContent =
-`Inloggad som: ${user.email}
-uid: ${user.uid}
-admin: ${isAdmin}
-orgId: ${orgId ?? "(saknas)"}`;
-
-        $("login").disabled = true;
-        $("logout").disabled = false;
-        $("createBtn").disabled = !isAdmin;
-        $("listBtn").disabled = !isAdmin;
-
-        setMsg(authMsgEl, "Inloggning OK.", "ok");
-      } catch (e) {
-        setMsg(authMsgEl, "Misslyckades att läsa token/claims: " + asErr(e), "err");
+    // Auth state
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setMsg(loginMsgEl, `Inloggning OK. Inloggad som: ${user.email}`, "ok");
+      } else {
+        setMsg(loginMsgEl, "Inte inloggad.", "");
       }
     });
 
-    // === Handlers ===
-    $("login").addEventListener("click", async () => {
-      setMsg(authMsgEl, "Loggar in…");
+    // LOGIN
+    $("loginBtn").addEventListener("click", async () => {
+      setMsg(loginMsgEl, "Loggar in…");
       try {
-        await signInWithEmailAndPassword(auth, emailEl.value.trim(), passEl.value);
-        setMsg(authMsgEl, "Inloggad.", "ok");
+        const email = $("email").value.trim();
+        const password = $("password").value;
+        await signInWithEmailAndPassword(auth, email, password);
+        setMsg(loginMsgEl, "Inloggning OK.", "ok");
       } catch (e) {
-        setMsg(authMsgEl, "Inloggning misslyckades: " + asErr(e), "err");
+        setMsg(loginMsgEl, "Fel vid inloggning: " + asErr(e), "err");
       }
     });
 
-    $("logout").addEventListener("click", async () => {
-      try {
-        await signOut(auth);
-        setMsg(authMsgEl, "Utloggad.", "ok");
-      } catch (e) {
-        setMsg(authMsgEl, "Utloggning misslyckades: " + asErr(e), "err");
-      }
+    $("logoutBtn").addEventListener("click", async () => {
+      await signOut(auth);
+      setMsg(loginMsgEl, "Utloggad.", "ok");
     });
 
+    // CREATE
     $("createBtn").addEventListener("click", async () => {
-      const email = $("newEmail").value.trim();
-      const password = $("newPass").value;
-      const orgId = $("newOrg").value.trim();
-      const role = $("newRole").value;
-
-      if (!email || !password || !orgId || !role) {
-        setMsg(createMsgEl, "Fyll i alla fält.", "err");
-        return;
-      }
-
-      setMsg(createMsgEl, "Skapar användare…");
+      setMsg(createMsgEl, "Skapar…");
       try {
-        const resp = await cfCreateUserWithClaims({ email, password, orgId, role });
-        const data = resp?.data || {};
-        setMsg(createMsgEl, `Skapad: ${data.email || email} (uid: ${data.uid || "okänd"})`, "ok");
+        const email = $("newEmail").value.trim();
+        const password = $("newPassword").value;
+        const orgId = $("orgId").value.trim();
+        const role = $("role").value;
+
+        await cfCreateUserWithClaims({ email, password, orgId, role });
+        setMsg(createMsgEl, `Skapade ${email} (${role}) i ${orgId}.`, "ok");
+        $("newEmail").value = "";
       } catch (e) {
         setMsg(createMsgEl, "Kunde inte skapa användare: " + asErr(e), "err");
       }
     });
 
+    // LIST
     $("listBtn").addEventListener("click", async () => {
+      setMsg(listMsgEl, "Hämtar…");
       usersEl.innerHTML = "";
-      setMsg(listMsgEl, "Hämtar användare…");
       try {
-        const resp = await cfListUsers({});
-        const list = resp?.data?.users || resp?.data || [];
-        if (!Array.isArray(list) || list.length === 0) {
-          setMsg(listMsgEl, "Inga användare hittades.");
-          return;
-        }
+        const { data } = await cfListUsers({});
+        const list = data?.users || [];
 
         list.forEach(u => {
           const li = document.createElement("li");
           const email = u.email || "(okänd e-post)";
           const uid = u.uid || "(okänt uid)";
           const claims = u.claims || u.customClaims || {};
-          const isAdmin = claims.role === "admin";
+          const isAdmin = (claims.role === "admin");
           const orgId = claims.orgId || "(saknas)";
+
           li.innerHTML = `
-            <span class="mono">${email}</span>
-            <span class="pill">${isAdmin ? "admin" : "staff"}</span>
-            <span class="pill">org: ${orgId}</span>
+            <div class="bar">
+              <span class="mono">${email}</span>
+              <span class="pill">${isAdmin ? "admin" : "staff"}</span>
+              <span class="pill">org: ${orgId}</span>
+              <button class="secondary delBtn" data-uid="${uid}" data-email="${email}" ${isAdmin ? "disabled" : ""}>Ta bort</button>
+            </div>
             <div class="muted mono">uid: ${uid}</div>
           `;
+
+          // Delete handler – admin får ALDRIG tas bort (skydd i UI + extra check)
+          const btn = li.querySelector(".delBtn");
+          btn?.addEventListener("click", async (ev) => {
+            if (isAdmin) return; // extra UI-skydd
+            const b = ev.currentTarget;
+            const uid = b.getAttribute("data-uid");
+            const email = b.getAttribute("data-email");
+
+            if (!uid || uid === "(okänt uid)") {
+              alert("Saknar uid för användaren — kan inte ta bort.");
+              return;
+            }
+            if (!confirm(`Ta bort kontot "${email}"?\nDetta går inte att ångra.`)) return;
+
+            b.disabled = true;
+            b.textContent = "Tar bort…";
+            try {
+              await cfDeleteUserByUid({ uid });
+              li.remove();
+              setMsg(listMsgEl, `Tog bort: ${email}`, "ok");
+            } catch (e) {
+              b.disabled = false;
+              b.textContent = "Ta bort";
+              setMsg(listMsgEl, "Kunde inte ta bort: " + asErr(e), "err");
+            }
+          });
+
           usersEl.appendChild(li);
         });
 
