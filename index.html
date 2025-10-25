@@ -153,20 +153,30 @@
 
     // CREATE
     $("createBtn").addEventListener("click", async () => {
-      setMsg(createMsgEl, "Skapar…");
-      try {
-        const email = $("newEmail").value.trim();
-        const password = $("newPassword").value;
-        const orgId = $("orgId").value.trim();
-        const role = $("role").value;
+  setMsg(createMsgEl, "Skapar…");
+  try {
+    const email = $("newEmail").value.trim();
+    const password = $("newPassword").value;
+    const orgId = $("orgId").value.trim();
+    const role = $("role").value;
 
-        await cfCreateUserWithClaims({ email, password, orgId, role });
-        setMsg(createMsgEl, `Skapade ${email} (${role}) i ${orgId}.`, "ok");
-        $("newEmail").value = "";
-      } catch (e) {
-        setMsg(createMsgEl, "Kunde inte skapa användare: " + asErr(e), "err");
-      }
-    });
+    await cfCreateUserWithClaims({ email, password, orgId, role });
+    setMsg(createMsgEl, `Skapade ${email} (${role}) i ${orgId}.`, "ok");
+    $("newEmail").value = "";
+  } catch (e) {
+    const msg = e?.message || "";
+    if (msg.includes("claim propagation lag")) {
+      setMsg(
+        createMsgEl,
+        `Kontot skapades, Vänta 10 sekunder innan listan uppdateras.`,
+        "ok"
+      );
+    } else {
+      setMsg(createMsgEl, "Kunde inte skapa användare: " + asErr(e), "err");
+    }
+  }
+});
+
 
     // LIST
     $("listBtn").addEventListener("click", async () => {
