@@ -27,6 +27,7 @@
 </head>
 <body>
   <h1>Org Admin</h1>
+
   <p class="muted">Logga in som admin, skapa användare och lista användare inom din organisation.</p>
 
   <section id="auth">
@@ -62,7 +63,8 @@
       </div>
       <div>
         <label for="newOrg">Organisation (orgId)</label>
-        <input id="newOrg" placeholder="t.ex. test-org" />
+        <input id="newOrg" value="vordnotes-dev" placeholder="t.ex. vordnotes-dev" />
+
       </div>
       <div>
         <label for="newRole">Roll</label>
@@ -134,39 +136,45 @@
 
     // === Auth state (force refresh så claims blir färska) ===
     onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        meEl.textContent = "Inte inloggad.";
-        $("login").disabled = false;
-        $("logout").disabled = true;
-        $("createBtn").disabled = true;
-        $("listBtn").disabled = true;
-        setMsg(authMsgEl, "");
-        return;
-      }
+  const claimsInfoEl = document.getElementById("claimsInfo");
 
-      try {
-        const tokenRes = await getIdTokenResult(user, true); // <- force refresh
-        const claims = tokenRes.claims || {};
-        const isAdmin = claims.role === "admin";
-        const orgId = claims.orgId ?? null;
+  if (!user) {
+    meEl.textContent = "Inte inloggad.";
+    claimsInfoEl.textContent = "";
+    $("login").disabled = false;
+    $("logout").disabled = true;
+    $("createBtn").disabled = true;
+    $("listBtn").disabled = true;
+    setMsg(authMsgEl, "");
+    return;
+  }
 
-        meEl.textContent =
+  try {
+    // Force refresh av token så nya claims alltid hämtas
+    const tokenRes = await getIdTokenResult(user, true);
+    const claims = tokenRes.claims || {};
+    const isAdmin = claims.role === "admin" || claims.admin === true;
+    const orgId = claims.orgId ?? null;
+
+    meEl.textContent =
 `Inloggad som: ${user.email}
 uid: ${user.uid}
 admin: ${isAdmin}
-orgId: ${orgId ?? "(saknas)"}`
-        ;
+orgId: ${orgId ?? "(saknas)"}`;
 
-        $("login").disabled = true;
-        $("logout").disabled = false;
-        $("createBtn").disabled = !isAdmin;
-        $("listBtn").disabled = !isAdmin;
+    claimsInfoEl.textContent = "Alla claims: " + JSON.stringify(claims, null, 2);
 
-        setMsg(authMsgEl, "Inloggning OK.", "ok");
-      } catch (e) {
-        setMsg(authMsgEl, "Misslyckades att läsa token/claims: " + asErr(e), "err");
-      }
-    });
+    $("login").disabled = true;
+    $("logout").disabled = false;
+    $("createBtn").disabled = !isAdmin;
+    $("listBtn").disabled = !isAdmin;
+
+    setMsg(authMsgEl, "Inloggning OK.", "ok");
+  } catch (e) {
+    setMsg(authMsgEl, "Misslyckades att läsa token/claims: " + asErr(e), "err");
+  }
+});
+
 
     // === Handlers ===
     $("login").addEventListener("click", async () => {
