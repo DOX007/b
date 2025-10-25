@@ -27,6 +27,8 @@
 </head>
 <body>
   <h1>Org Admin</h1>
+  <!-- Debug-ruta för claims -->
+  <pre id="claimsInfo" class="mono muted" style="white-space:pre-wrap;"></pre>
 
   <p class="muted">Logga in som admin, skapa användare och lista användare inom din organisation.</p>
 
@@ -64,7 +66,6 @@
       <div>
         <label for="newOrg">Organisation (orgId)</label>
         <input id="newOrg" value="vordnotes-dev" placeholder="t.ex. vordnotes-dev" />
-
       </div>
       <div>
         <label for="newRole">Roll</label>
@@ -91,172 +92,171 @@
 
   <!-- Firebase v10 ESM-moduler -->
   <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-analytics.js";
-  import {
-    getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, getIdTokenResult
-  } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
-  import {
-    getFunctions, httpsCallableFromURL
-  } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-functions.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-analytics.js";
+    import {
+      getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, getIdTokenResult
+    } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
+    import {
+      getFunctions, httpsCallableFromURL
+    } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-functions.js";
 
-  // === Firebase-konfiguration ===
-  const firebaseConfig = {
-    apiKey: "AIzaSyD837dSDubNSKKRxZuxaOym25vF87eTfqI",
-    authDomain: "vordnotes.firebaseapp.com",
-    projectId: "vordnotes",
-    storageBucket: "vordnotes.appspot.com",
-    messagingSenderId: "336975924503",
-    appId: "1:336975924503:web:e283bcb380ce1e56dc3b52",
-    measurementId: "G-DNGLKMVW95"
-  };
+    // === Firebase-konfiguration (ditt projekt) ===
+    const firebaseConfig = {
+      apiKey: "AIzaSyD837dSDubNSKKRxZuxaOym25vF87eTfqI",
+      authDomain: "vordnotes.firebaseapp.com",
+      projectId: "vordnotes",
+      storageBucket: "vordnotes.appspot.com",
+      messagingSenderId: "336975924503",
+      appId: "1:336975924503:web:e283bcb380ce1e56dc3b52",
+      measurementId: "G-DNGLKMVW95"
+    };
 
-  // === Init ===
-  const app = initializeApp(firebaseConfig);
-  try { getAnalytics(app); } catch (_) {}
-  const auth = getAuth(app);
+    // === Init ===
+    const app = initializeApp(firebaseConfig);
+    try { getAnalytics(app); } catch (_) {}
+    const auth = getAuth(app);
 
-  // === Cloud Functions (v2 endpoints) ===
-  const functions = getFunctions(app, "us-central1");
-  const cfCreateUserWithClaims = httpsCallableFromURL(
-    functions,
-    "https://us-central1-vordnotes.cloudfunctions.net/createUserWithClaims"
-  );
-  const cfListUsers = httpsCallableFromURL(
-    functions,
-    "https://us-central1-vordnotes.cloudfunctions.net/listUsers"
-  );
+    // Viktigt: dina Cloud Functions ligger i us-central1
+    const functions = getFunctions(app, "us-central1");
 
-  // === UI helpers ===
-  const $ = (id) => document.getElementById(id);
-  const emailEl = $("email");
-  const passEl = $("password");
-  const meEl = $("me");
-  const authMsgEl = $("authMsg");
-  const createMsgEl = $("createMsg");
-  const listMsgEl = $("listMsg");
-  const usersEl = $("users");
-  const claimsInfoEl = document.createElement("pre");
-  claimsInfoEl.id = "claimsInfo";
-  claimsInfoEl.className = "mono muted";
-  claimsInfoEl.style.whiteSpace = "pre-wrap";
-  document.querySelector("body").insertBefore(claimsInfoEl, document.getElementById("auth"));
+    // Anropa v2-callables via full URL för att undvika NOT_FOUND
+    const cfCreateUserWithClaims = httpsCallableFromURL(
+      functions,
+      "https://us-central1-vordnotes.cloudfunctions.net/createUserWithClaims"
+    );
+    const cfListUsers = httpsCallableFromURL(
+      functions,
+      "https://us-central1-vordnotes.cloudfunctions.net/listUsers"
+    );
 
-  const setMsg = (el, msg, cls = "muted") => { el.textContent = msg || ""; el.className = cls; };
-  const asErr = (e) => e?.message || (typeof e === "string" ? e : (() => { try { return JSON.stringify(e) } catch { return String(e) } })());
+    // === UI helpers ===
+    const $ = (id) => document.getElementById(id);
+    const emailEl = $("email");
+    const passEl = $("password");
+    const meEl = $("me");
+    const authMsgEl = $("authMsg");
+    const createMsgEl = $("createMsg");
+    const listMsgEl = $("listMsg");
+    const usersEl = $("users");
+    const claimsInfoEl = $("claimsInfo");
 
-  // === Auth state ===
-  onAuthStateChanged(auth, async (user) => {
-    if (!user) {
-      meEl.textContent = "Inte inloggad.";
-      claimsInfoEl.textContent = "";
-      $("login").disabled = false;
-      $("logout").disabled = true;
-      $("createBtn").disabled = true;
-      $("listBtn").disabled = true;
-      setMsg(authMsgEl, "");
-      return;
-    }
+    const setMsg = (el, msg, cls="muted") => { el.textContent = msg || ""; el.className = cls; };
+    const asErr = (e) => e?.message || (typeof e === "string" ? e : (()=>{ try{return JSON.stringify(e)}catch{return String(e)} })());
 
-    try {
-      const tokenRes = await getIdTokenResult(user, true);
-      const claims = tokenRes.claims || {};
-      const isAdmin = claims.role === "admin" || claims.admin === true;
-      const orgId = claims.orgId ?? null;
+    // === Auth state (force refresh så claims blir färska) ===
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        meEl.textContent = "Inte inloggad.";
+        if (claimsInfoEl) claimsInfoEl.textContent = "";
+        $("login").disabled = false;
+        $("logout").disabled = true;
+        $("createBtn").disabled = true;
+        $("listBtn").disabled = true;
+        setMsg(authMsgEl, "");
+        return;
+      }
 
-      meEl.textContent =
+      try {
+        const tokenRes = await getIdTokenResult(user, true); // force refresh
+        const claims = tokenRes.claims || {};
+        const isAdmin = claims.role === "admin" || claims.admin === true;
+        const orgId = claims.orgId ?? null;
+
+        meEl.textContent =
 `Inloggad som: ${user.email}
 uid: ${user.uid}
 admin: ${isAdmin}
 orgId: ${orgId ?? "(saknas)"}`;
 
-      claimsInfoEl.textContent = "Alla claims:\n" + JSON.stringify(claims, null, 2);
+        if (claimsInfoEl) {
+          claimsInfoEl.textContent = "Alla claims:\n" + JSON.stringify(claims, null, 2);
+        }
 
-      $("login").disabled = true;
-      $("logout").disabled = false;
-      $("createBtn").disabled = !isAdmin;
-      $("listBtn").disabled = !isAdmin;
+        $("login").disabled = true;
+        $("logout").disabled = false;
+        $("createBtn").disabled = !isAdmin;
+        $("listBtn").disabled = !isAdmin;
 
-      setMsg(authMsgEl, "Inloggning OK.", "ok");
-    } catch (e) {
-      setMsg(authMsgEl, "Misslyckades att läsa token/claims: " + asErr(e), "err");
-    }
-  });
+        setMsg(authMsgEl, "Inloggning OK.", "ok");
+      } catch (e) {
+        setMsg(authMsgEl, "Misslyckades att läsa token/claims: " + asErr(e), "err");
+      }
+    });
 
-  // === Handlers ===
-  $("login").addEventListener("click", async () => {
-    setMsg(authMsgEl, "Loggar in…");
-    try {
-      await signInWithEmailAndPassword(auth, emailEl.value.trim(), passEl.value);
-      setMsg(authMsgEl, "Inloggad.", "ok");
-    } catch (e) {
-      setMsg(authMsgEl, "Inloggning misslyckades: " + asErr(e), "err");
-    }
-  });
+    // === Handlers ===
+    $("login").addEventListener("click", async () => {
+      setMsg(authMsgEl, "Loggar in…");
+      try {
+        await signInWithEmailAndPassword(auth, emailEl.value.trim(), passEl.value);
+        setMsg(authMsgEl, "Inloggad.", "ok");
+      } catch (e) {
+        setMsg(authMsgEl, "Inloggning misslyckades: " + asErr(e), "err");
+      }
+    });
 
-  $("logout").addEventListener("click", async () => {
-    try {
-      await signOut(auth);
-      setMsg(authMsgEl, "Utloggad.", "ok");
-    } catch (e) {
-      setMsg(authMsgEl, "Utloggning misslyckades: " + asErr(e), "err");
-    }
-  });
+    $("logout").addEventListener("click", async () => {
+      try {
+        await signOut(auth);
+        setMsg(authMsgEl, "Utloggad.", "ok");
+      } catch (e) {
+        setMsg(authMsgEl, "Utloggning misslyckades: " + asErr(e), "err");
+      }
+    });
 
-  $("createBtn").addEventListener("click", async () => {
-    const email = $("newEmail").value.trim();
-    const password = $("newPass").value;
-    const orgId = $("newOrg").value.trim();
-    const role = $("newRole").value;
+    $("createBtn").addEventListener("click", async () => {
+      const email = $("newEmail").value.trim();
+      const password = $("newPass").value;          // skickas som password
+      const orgId = $("newOrg").value.trim();
+      const role = $("newRole").value;
 
-    if (!email || !password || !orgId || !role) {
-      setMsg(createMsgEl, "Fyll i alla fält.", "err");
-      return;
-    }
-
-    setMsg(createMsgEl, "Skapar användare…");
-    try {
-      const resp = await cfCreateUserWithClaims({ email, password, orgId, role });
-      const data = resp?.data || {};
-      setMsg(createMsgEl, `Skapad: ${data.email || email} (uid: ${data.uid || "okänd"})`, "ok");
-    } catch (e) {
-      setMsg(createMsgEl, "Kunde inte skapa användare: " + asErr(e), "err");
-    }
-  });
-
-  $("listBtn").addEventListener("click", async () => {
-    usersEl.innerHTML = "";
-    setMsg(listMsgEl, "Hämtar användare…");
-    try {
-      const resp = await cfListUsers({});
-      const list = resp?.data?.users || resp?.data || [];
-      if (!Array.isArray(list) || list.length === 0) {
-        setMsg(listMsgEl, "Inga användare hittades.");
+      if (!email || !password || !orgId || !role) {
+        setMsg(createMsgEl, "Fyll i alla fält.", "err");
         return;
       }
 
-      list.forEach(u => {
-        const li = document.createElement("li");
-        const email = u.email || "(okänd e-post)";
-        const uid = u.uid || "(okänt uid)";
-        const claims = u.claims || u.customClaims || {};
-        const isAdmin = claims.role === "admin";
-        const orgId = claims.orgId || "(saknas)";
-        li.innerHTML = `
-          <span class="mono">${email}</span>
-          <span class="pill">${isAdmin ? "admin" : "staff"}</span>
-          <span class="pill">org: ${orgId}</span>
-          <div class="muted mono">uid: ${uid}</div>
-        `;
-        usersEl.appendChild(li);
-      });
+      setMsg(createMsgEl, "Skapar användare…");
+      try {
+        const resp = await cfCreateUserWithClaims({ email, password, orgId, role });
+        const data = resp?.data || {};
+        setMsg(createMsgEl, `Skapad: ${data.email || email} (uid: ${data.uid || "okänd"})`, "ok");
+      } catch (e) {
+        setMsg(createMsgEl, "Kunde inte skapa användare: " + asErr(e), "err");
+      }
+    });
 
-      setMsg(listMsgEl, `Klar. (${list.length} användare)`, "ok");
-    } catch (e) {
-      setMsg(listMsgEl, "Kunde inte hämta lista: " + asErr(e), "err");
-    }
-  });
-</script>
+    $("listBtn").addEventListener("click", async () => {
+      usersEl.innerHTML = "";
+      setMsg(listMsgEl, "Hämtar användare…");
+      try {
+        const resp = await cfListUsers({});
+        const list = resp?.data?.users || resp?.data || [];
+        if (!Array.isArray(list) || list.length === 0) {
+          setMsg(listMsgEl, "Inga användare hittades.");
+          return;
+        }
 
+        list.forEach(u => {
+          const li = document.createElement("li");
+          const email = u.email || "(okänd e-post)";
+          const uid = u.uid || "(okänt uid)";
+          const claims = u.claims || u.customClaims || {};
+          const isAdmin = claims.role === "admin";
+          const orgId = claims.orgId || "(saknas)";
+          li.innerHTML = `
+            <span class="mono">${email}</span>
+            <span class="pill">${isAdmin ? "admin" : "staff"}</span>
+            <span class="pill">org: ${orgId}</span>
+            <div class="muted mono">uid: ${uid}</div>
+          `;
+          usersEl.appendChild(li);
+        });
+
+        setMsg(listMsgEl, `Klar. (${list.length} användare)`, "ok");
+      } catch (e) {
+        setMsg(listMsgEl, "Kunde inte hämta lista: " + asErr(e), "err");
+      }
+    });
+  </script>
 </body>
 </html>
