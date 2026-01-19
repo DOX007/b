@@ -7,47 +7,100 @@
 
 <style>
 :root { color-scheme: dark light; }
+
 body {
   font-family: system-ui, sans-serif;
   max-width: 1100px;
   margin: 24px auto;
   padding: 0 16px;
 }
+
 h1 { margin-bottom: 4px; }
+
 section {
   border: 1px solid #333;
   border-radius: 12px;
   padding: 16px;
   margin: 16px 0;
 }
+
+label {
+  display:block;
+  font-size: 13px;
+  margin-top: 8px;
+  opacity: .85;
+}
+
 select, input, textarea, button {
   font: inherit;
   padding: 8px;
   border-radius: 8px;
 }
-textarea { width: 100%; min-height: 80px; }
-button { cursor: pointer; background:#111827; color:white; border:none; }
+
+input, select, textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+textarea {
+  min-height: 260px;      /* 🔥 STOR EDITORYTA */
+  resize: vertical;
+  line-height: 1.5;
+  overflow: hidden;       /* för auto-expand */
+}
+
+button {
+  cursor: pointer;
+  background:#111827;
+  color:white;
+  border:none;
+}
+
 button.secondary { background:#6b7280; }
 button.danger { background:#991b1b; }
-button:disabled { opacity:.6; cursor:not-allowed; }
-.row { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+
+button:disabled {
+  opacity:.6;
+  cursor:not-allowed;
+}
+
+.row {
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:12px;
+}
+
 .item {
   border: 1px solid #444;
   border-radius: 8px;
-  padding: 12px;
-  margin: 10px 0;
+  padding: 14px;
+  margin: 14px 0;
 }
-.mono { font-family: ui-monospace, monospace; font-size: 13px; }
-.muted { opacity:.7; font-size: 12px; }
-.bar { display:flex; gap:8px; flex-wrap:wrap; }
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+}
+
+.muted {
+  opacity:.7;
+  font-size: 12px;
+}
+
+.bar {
+  display:flex;
+  gap:10px;
+  margin-top: 12px;
+}
 </style>
 </head>
 
 <body>
+
 <h1>VordNotes – Data Admin</h1>
 <p class="muted">CRUD för Firestore: notes / tasks / bookmarks</p>
 
-<!-- AUTH ---------------------------------------------------->
+<!-- AUTH ------------------------------------------------------------>
 <section>
 <h2>Inloggning</h2>
 <div class="row">
@@ -59,7 +112,7 @@ button:disabled { opacity:.6; cursor:not-allowed; }
 <p id="authMsg" class="muted"></p>
 </section>
 
-<!-- SELECT COLLECTION -------------------------------------->
+<!-- DB -------------------------------------------------------------->
 <section>
 <h2>Databas</h2>
 <div class="row">
@@ -68,12 +121,12 @@ button:disabled { opacity:.6; cursor:not-allowed; }
     <option value="tasks">tasks</option>
     <option value="bookmarks">bookmarks</option>
   </select>
-  <input id="search" placeholder="Sök (titel, text, id)">
+  <input id="search" placeholder="Sök i titel / text">
   <button id="loadBtn">Ladda data</button>
 </div>
 </section>
 
-<!-- LIST --------------------------------------------------->
+<!-- LIST ------------------------------------------------------------>
 <section>
 <h2>Poster</h2>
 <div id="list"></div>
@@ -82,14 +135,22 @@ button:disabled { opacity:.6; cursor:not-allowed; }
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
-from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
-  getFirestore, collection, getDocs,
-  doc, updateDoc, deleteDoc
+  getAuth,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore,
+  collection,
+  getDocs,
+  doc,
+  updateDoc,
+  deleteDoc
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-/* FIREBASE CONFIG */
+/* FIREBASE ------------------------------------------------ */
 const firebaseConfig = {
   apiKey: "AIzaSyD837dSDubNSKKRxZuxaOym25vF87eTfqI",
   authDomain: "vordnotes.firebaseapp.com",
@@ -103,11 +164,11 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-/* HELPERS */
+/* HELPERS ------------------------------------------------ */
 const $ = id => document.getElementById(id);
 const msg = (el, t) => el.textContent = t;
 
-/* AUTH */
+/* AUTH --------------------------------------------------- */
 onAuthStateChanged(auth, u => {
   msg($("authMsg"), u ? `Inloggad: ${u.email}` : "Inte inloggad");
 });
@@ -122,86 +183,101 @@ $("loginBtn").onclick = async () => {
 
 $("logoutBtn").onclick = () => signOut(auth);
 
-/* LOAD DATA */
+/* LOAD DATA ---------------------------------------------- */
 $("loadBtn").onclick = async () => {
   $("list").innerHTML = "";
   msg($("listMsg"), "Laddar…");
 
   const col = $("collection").value;
   const q = $("search").value.toLowerCase();
+
   const snap = await getDocs(collection(db, "workspace/shared/" + col));
-
   let count = 0;
+
   snap.forEach(d => {
-  const n = d.data();
-  if (q && !n.title?.toLowerCase().includes(q) && !n.content?.toLowerCase().includes(q)) return;
+    const n = d.data();
+    if (
+      q &&
+      !n.title?.toLowerCase().includes(q) &&
+      !n.content?.toLowerCase().includes(q)
+    ) return;
 
-  const el = document.createElement("div");
-  el.className = "item";
+    count++;
 
-  el.innerHTML = `
-    <div class="mono muted">id: ${n.id}</div>
+    const el = document.createElement("div");
+    el.className = "item";
 
-    <label>Titel</label>
-    <input class="title" value="${n.title ?? ""}">
+    el.innerHTML = `
+      <div class="mono muted">id: ${n.id}</div>
 
-    <label>Innehåll</label>
-    <textarea class="content">${n.content ?? ""}</textarea>
+      <label>Titel</label>
+      <input class="title" value="${n.title ?? ""}">
 
-    <div class="row">
-      <div>
-        <label>Folder ID</label>
-        <input class="folderId" type="number" value="${n.folderId ?? 0}">
+      <label>Innehåll</label>
+      <textarea class="content mono">${n.content ?? ""}</textarea>
+
+      <div class="row">
+        <div>
+          <label>Folder ID</label>
+          <input class="folderId" type="number" value="${n.folderId ?? 0}">
+        </div>
+        <div>
+          <label>Pinned</label>
+          <input class="pinned" type="checkbox" ${n.pinned ? "checked" : ""}>
+        </div>
       </div>
-      <div>
-        <label>Pinned</label>
-        <input class="pinned" type="checkbox" ${n.pinned ? "checked" : ""}>
+
+      <div class="muted mono">
+        Skapad: ${n.createdDate}<br>
+        Uppdaterad: ${n.updatedDate}
       </div>
-    </div>
 
-    <div class="muted mono">
-      Skapad: ${n.createdDate}<br>
-      Uppdaterad: ${n.updatedDate}
-    </div>
+      <div class="bar">
+        <button class="save">Spara</button>
+        <button class="danger del">Radera</button>
+      </div>
+    `;
 
-    <div class="bar">
-      <button class="save">Spara</button>
-      <button class="danger del">Radera</button>
-    </div>
-  `;
+    /* AUTO-EXPAND TEXTAREA */
+    const ta = el.querySelector(".content");
+    ta.style.height = "auto";
+    ta.style.height = ta.scrollHeight + "px";
+    ta.addEventListener("input", () => {
+      ta.style.height = "auto";
+      ta.style.height = ta.scrollHeight + "px";
+    });
 
-  /* SPARA */
-  el.querySelector(".save").onclick = async () => {
-    await updateDoc(
-      doc(db, "workspace/shared/" + col, d.id),
-      {
-        title: el.querySelector(".title").value,
-        content: el.querySelector(".content").value,
-        folderId: Number(el.querySelector(".folderId").value),
-        pinned: el.querySelector(".pinned").checked,
-        updatedDate: Date.now()
-      }
-    );
-    alert("Sparat");
-  };
+    /* SAVE */
+    el.querySelector(".save").onclick = async () => {
+      await updateDoc(
+        doc(db, "workspace/shared/" + col, d.id),
+        {
+          title: el.querySelector(".title").value,
+          content: ta.value,
+          folderId: Number(el.querySelector(".folderId").value),
+          pinned: el.querySelector(".pinned").checked,
+          updatedDate: Date.now()
+        }
+      );
+      alert("Sparat");
+    };
 
-  /* RADERA */
-  el.querySelector(".del").onclick = async () => {
-    if (!confirm("Radera posten permanent?")) return;
-    await deleteDoc(doc(db, "workspace/shared/" + col, d.id));
-    el.remove();
-  };
+    /* DELETE */
+    el.querySelector(".del").onclick = async () => {
+      if (!confirm("Radera posten permanent?")) return;
+      await deleteDoc(doc(db, "workspace/shared/" + col, d.id));
+      el.remove();
+    };
 
-  $("list").appendChild(el);
-});
-
+    $("list").appendChild(el);
+  });
 
   msg($("listMsg"), `Klar. ${count} poster.`);
 };
 </script>
 
 <footer style="margin:40px 0; text-align:center; opacity:.6">
-<a href="index.html">⬅ Tillbaka till admin</a>
+  <a href="index.html">⬅ Tillbaka till admin</a>
 </footer>
 
 </body>
