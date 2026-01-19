@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>VordNotes – Data Admin</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+:root { color-scheme: dark light; }
+body {
+  font-family: system-ui, sans-serif;
+  max-width: 1100px;
+  margin: 24px auto;
+  padding: 0 16px;
+}
+h1 { margin-bottom: 4px; }
+section {
+  border: 1px solid #333;
+  border-radius: 12px;
+  padding: 16px;
+  margin: 16px 0;
+}
+select, input, textarea, button {
+  font: inherit;
+  padding: 8px;
+  border-radius: 8px;
+}
+textarea { width: 100%; min-height: 80px; }
+button { cursor: pointer; background:#111827; color:white; border:none; }
+button.secondary { background:#6b7280; }
+button.danger { background:#991b1b; }
+button:disabled { opacity:.6; cursor:not-allowed; }
+.row { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+.item {
+  border: 1px solid #444;
+  border-radius: 8px;
+  padding: 12px;
+  margin: 10px 0;
+}
+.mono { font-family: ui-monospace, monospace; font-size: 13px; }
+.muted { opacity:.7; font-size: 12px; }
+.bar { display:flex; gap:8px; flex-wrap:wrap; }
+</style>
+</head>
+
+<body>
+<h1>VordNotes – Data Admin</h1>
+<p class="muted">CRUD för Firestore: notes / tasks / bookmarks</p>
+
+<!-- AUTH ---------------------------------------------------->
+<section>
+<h2>Inloggning</h2>
+<div class="row">
+  <input id="email" placeholder="admin@example.com">
+  <input id="password" type="password" placeholder="lösenord">
+  <button id="loginBtn">Logga in</button>
+  <button id="logoutBtn" class="secondary">Logga ut</button>
+</div>
+<p id="authMsg" class="muted"></p>
+</section>
+
+<!-- SELECT COLLECTION -------------------------------------->
+<section>
+<h2>Databas</h2>
+<div class="row">
+  <select id="collection">
+    <option value="notes">notes</option>
+    <option value="tasks">tasks</option>
+    <option value="bookmarks">bookmarks</option>
+  </select>
+  <input id="search" placeholder="Sök (titel, text, id)">
+  <button id="loadBtn">Ladda data</button>
+</div>
+</section>
+
+<!-- LIST --------------------------------------------------->
+<section>
+<h2>Poster</h2>
+<div id="list"></div>
+<p id="listMsg" class="muted"></p>
+</section>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore, collection, getDocs,
+  doc, updateDoc, deleteDoc
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+/* FIREBASE CONFIG */
+const firebaseConfig = {
+  apiKey: "AIzaSyD837dSDubNSKKRxZuxaOym25vF87eTfqI",
+  authDomain: "vordnotes.firebaseapp.com",
+  projectId: "vordnotes",
+  storageBucket: "vordnotes.appspot.com",
+  messagingSenderId: "336975924503",
+  appId: "1:336975924503:web:e283bcb380ce1e56dc3b52"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+/* HELPERS */
+const $ = id => document.getElementById(id);
+const msg = (el, t) => el.textContent = t;
+
+/* AUTH */
+onAuthStateChanged(auth, u => {
+  msg($("authMsg"), u ? `Inloggad: ${u.email}` : "Inte inloggad");
+});
+
+$("loginBtn").onclick = async () => {
+  try {
+    await signInWithEmailAndPassword(auth, $("email").value, $("password").value);
+  } catch(e) {
+    msg($("authMsg"), e.message);
+  }
+};
+
+$("logoutBtn").onclick = () => signOut(auth);
+
+/* LOAD DATA */
+$("loadBtn").onclick = async () => {
+  $("list").innerHTML = "";
+  msg($("listMsg"), "Laddar…");
+
+  const col = $("collection").value;
+  const q = $("search").value.toLowerCase();
+  const snap = await getDocs(collection(db, "workspace/shared/" + col));
+
+  let count = 0;
+  snap.forEach(d => {
+    const data = d.data();
+    const text = JSON.stringify(data).toLowerCase();
+    if (q && !text.includes(q) && !d.id.includes(q)) return;
+
+    count++;
+    const div = document.createElement("div");
+    div.className = "item";
+
+    div.innerHTML = `
+      <div class="mono muted">id: ${d.id}</div>
+      <textarea>${JSON.stringify(data, null, 2)}</textarea>
+      <div class="bar">
+        <button class="save">Spara</button>
+        <button class="danger del">Radera</button>
+      </div>
+    `;
+
+    /* SAVE */
+    div.querySelector(".save").onclick = async () => {
+      try {
+        const obj = JSON.parse(div.querySelector("textarea").value);
+        await updateDoc(doc(db, "workspace/shared/" + col, d.id), obj);
+        alert("Sparat");
+      } catch(e) {
+        alert("Fel: " + e.message);
+      }
+    };
+
+    /* DELETE */
+    div.querySelector(".del").onclick = async () => {
+      if (!confirm("Radera detta dokument permanent?")) return;
+      await deleteDoc(doc(db, "workspace/shared/" + col, d.id));
+      div.remove();
+    };
+
+    $("list").appendChild(div);
+  });
+
+  msg($("listMsg"), `Klar. ${count} poster.`);
+};
+</script>
+
+<footer style="margin:40px 0; text-align:center; opacity:.6">
+<a href="index.html">⬅ Tillbaka till admin</a>
+</footer>
+
+</body>
+</html>
