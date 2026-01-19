@@ -133,43 +133,68 @@ $("loadBtn").onclick = async () => {
 
   let count = 0;
   snap.forEach(d => {
-    const data = d.data();
-    const text = JSON.stringify(data).toLowerCase();
-    if (q && !text.includes(q) && !d.id.includes(q)) return;
+  const n = d.data();
+  if (q && !n.title?.toLowerCase().includes(q) && !n.content?.toLowerCase().includes(q)) return;
 
-    count++;
-    const div = document.createElement("div");
-    div.className = "item";
+  const el = document.createElement("div");
+  el.className = "item";
 
-    div.innerHTML = `
-      <div class="mono muted">id: ${d.id}</div>
-      <textarea>${JSON.stringify(data, null, 2)}</textarea>
-      <div class="bar">
-        <button class="save">Spara</button>
-        <button class="danger del">Radera</button>
+  el.innerHTML = `
+    <div class="mono muted">id: ${n.id}</div>
+
+    <label>Titel</label>
+    <input class="title" value="${n.title ?? ""}">
+
+    <label>Innehåll</label>
+    <textarea class="content">${n.content ?? ""}</textarea>
+
+    <div class="row">
+      <div>
+        <label>Folder ID</label>
+        <input class="folderId" type="number" value="${n.folderId ?? 0}">
       </div>
-    `;
+      <div>
+        <label>Pinned</label>
+        <input class="pinned" type="checkbox" ${n.pinned ? "checked" : ""}>
+      </div>
+    </div>
 
-    /* SAVE */
-    div.querySelector(".save").onclick = async () => {
-      try {
-        const obj = JSON.parse(div.querySelector("textarea").value);
-        await updateDoc(doc(db, "workspace/shared/" + col, d.id), obj);
-        alert("Sparat");
-      } catch(e) {
-        alert("Fel: " + e.message);
+    <div class="muted mono">
+      Skapad: ${n.createdDate}<br>
+      Uppdaterad: ${n.updatedDate}
+    </div>
+
+    <div class="bar">
+      <button class="save">Spara</button>
+      <button class="danger del">Radera</button>
+    </div>
+  `;
+
+  /* SPARA */
+  el.querySelector(".save").onclick = async () => {
+    await updateDoc(
+      doc(db, "workspace/shared/" + col, d.id),
+      {
+        title: el.querySelector(".title").value,
+        content: el.querySelector(".content").value,
+        folderId: Number(el.querySelector(".folderId").value),
+        pinned: el.querySelector(".pinned").checked,
+        updatedDate: Date.now()
       }
-    };
+    );
+    alert("Sparat");
+  };
 
-    /* DELETE */
-    div.querySelector(".del").onclick = async () => {
-      if (!confirm("Radera detta dokument permanent?")) return;
-      await deleteDoc(doc(db, "workspace/shared/" + col, d.id));
-      div.remove();
-    };
+  /* RADERA */
+  el.querySelector(".del").onclick = async () => {
+    if (!confirm("Radera posten permanent?")) return;
+    await deleteDoc(doc(db, "workspace/shared/" + col, d.id));
+    el.remove();
+  };
 
-    $("list").appendChild(div);
-  });
+  $("list").appendChild(el);
+});
+
 
   msg($("listMsg"), `Klar. ${count} poster.`);
 };
