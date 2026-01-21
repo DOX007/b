@@ -121,15 +121,24 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 1rem;
+      margin-bottom: 1.25rem;
     }
     .item-id {
       font-family: ui-monospace;
-      font-size: 0.85rem;
+      font-size: 0.9rem;
       color: var(--text-muted);
     }
 
-    .subtasks { margin: 1.25rem 0; }
+    .field-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .subtasks {
+      margin: 1.5rem 0;
+      padding: 1rem;
+      background: rgba(0,0,0,0.2);
+      border-radius: 10px;
+    }
     .subtask {
       display: flex;
       align-items: center;
@@ -142,21 +151,15 @@
     }
     .subtask input[type="text"] { flex: 1; }
 
-    .actions {
-      display: flex;
-      gap: 0.75rem;
-      margin-top: 1.5rem;
-      flex-wrap: wrap;
+    .add-sub-btn {
+      margin-top: 0.75rem;
     }
 
-    .json-view {
-      background: #0002;
-      padding: 1rem;
-      border-radius: 8px;
-      font-family: ui-monospace;
-      font-size: 0.9rem;
-      white-space: pre-wrap;
-      overflow-x: auto;
+    .actions {
+      display: flex;
+      gap: 1rem;
+      margin-top: 2rem;
+      flex-wrap: wrap;
     }
 
     @media (max-width: 640px) {
@@ -270,6 +273,7 @@
         const data = docSnap.data();
         const item = document.createElement("div");
         item.className = "item";
+        item.dataset.docId = docSnap.id;
 
         const commonHeader = `
           <div class="item-header">
@@ -277,72 +281,65 @@
           </div>
         `;
 
-        let contentHTML = "";
+        let extraFields = "";
+        if (col === "bookmarks") {
+          extraFields = `
+            <div class="field-group">
+              <label>URL</label>
+              <input class="url" value="${data.url ?? ""}">
+            </div>
+          `;
+        }
 
+        let subtasksHTML = "";
         if (col === "tasks") {
           const subTasks = data.subTasks ?? [];
-          contentHTML = `
-            <label>Titel</label>
-            <input class="title" value="${data.title ?? ""}">
-            
-            <label>Beskrivning</label>
-            <textarea class="desc">${data.description ?? ""}</textarea>
-            
+          subtasksHTML = `
             <div class="subtasks">
               <label>SubTasks (mediciner)</label>
               ${subTasks.map((s, i) => `
                 <div class="subtask">
-                  <input type="text" class="subTitle" data-i="${i}" value="${s.title ?? ""}">
+                  <input type="text" class="subTitle" data-index="${i}" value="${s.title ?? ""}">
                   <label style="display:flex; align-items:center; gap:0.5rem; white-space:nowrap;">
-                    <input type="checkbox" class="subDone" data-i="${i}" ${s.isCompleted ? "checked" : ""}>
+                    <input type="checkbox" class="subDone" data-index="${i}" ${s.isCompleted ? "checked" : ""}>
                     Klar
                   </label>
                 </div>
               `).join("")}
-            </div>
-            
-            <button class="btn btn-secondary addSub"><i class="fas fa-plus"></i> Lägg till SubTask</button>
-          `;
-        } 
-        else if (col === "notes" || col === "bookmarks") {
-          contentHTML = `
-            <label>Titel</label>
-            <input class="title" value="${data.title ?? ""}">
-            
-            <label>Beskrivning</label>
-            <textarea class="desc">${data.description ?? ""}</textarea>
-            
-            ${col === "bookmarks" ? `
-              <label>URL</label>
-              <input class="url" value="${data.url ?? ""}">
-            ` : ""}
-          `;
-        } 
-        else {
-          // Fallback för andra collections
-          contentHTML = `
-            <div class="json-view">
-              ${JSON.stringify(data, null, 2)}
+              <button class="btn btn-secondary addSub add-sub-btn"><i class="fas fa-plus"></i> Lägg till SubTask</button>
             </div>
           `;
         }
 
         item.innerHTML = `
           ${commonHeader}
-          ${contentHTML}
+          <div class="field-group">
+            <label>Titel</label>
+            <input class="title" value="${data.title ?? ""}">
+          </div>
+          <div class="field-group">
+            <label>Beskrivning</label>
+            <textarea class="desc">${data.description ?? ""}</textarea>
+          </div>
+          ${extraFields}
+          ${subtasksHTML}
           <div class="actions">
             <button class="btn btn-primary save"><i class="fas fa-save"></i> Spara</button>
             <button class="btn btn-danger del"><i class="fas fa-trash"></i> Radera</button>
           </div>
         `;
 
-        // SAVE - gemensamt för tasks, notes & bookmarks
+        // SAVE
         item.querySelector(".save").onclick = async () => {
           const updateData = {
             title: item.querySelector(".title")?.value ?? "",
             description: item.querySelector(".desc")?.value ?? "",
             updatedDate: Date.now()
           };
+
+          if (col === "bookmarks") {
+            updateData.url = item.querySelector(".url")?.value ?? "";
+          }
 
           if (col === "tasks") {
             const titles = item.querySelectorAll(".subTitle");
@@ -355,10 +352,6 @@
             updateData.subTasks = subTasks;
           }
 
-          if (col === "bookmarks") {
-            updateData.url = item.querySelector(".url")?.value ?? "";
-          }
-
           try {
             await updateDoc(doc(db, "workspace", "shared", col, docSnap.id), updateData);
             alert("Sparat ✓");
@@ -367,11 +360,11 @@
           }
         };
 
-        // ADD SUBTASK (endast tasks)
+        // ADD SUBTASK (only tasks)
         item.querySelector(".addSub")?.onclick = () => {
           data.subTasks = data.subTasks || [];
           data.subTasks.push({ title: "", isCompleted: false });
-          $("loadBtn").click();
+          $("loadBtn").click(); // Reload för att visa nya fältet
         };
 
         // DELETE
