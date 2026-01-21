@@ -146,6 +146,20 @@
     }
     .subtask input[type="text"] { flex: 1; }
 
+    .extra-fields {
+      margin-top: 2rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border);
+    }
+    .extra-field {
+      margin-bottom: 1rem;
+    }
+    .extra-field input {
+      background: rgba(0,0,0,0.3);
+      color: var(--text-muted);
+      cursor: not-allowed;
+    }
+
     .actions {
       display: flex;
       gap: 1rem;
@@ -246,7 +260,6 @@
 
     $("logoutBtn").onclick = () => signOut(auth);
 
-    // Ladda data
     $("loadBtn").onclick = async () => {
       const list = $("list");
       list.innerHTML = '<p style="text-align:center; color:var(--text-muted);">Laddar...</p>';
@@ -271,8 +284,6 @@
         const data = docSnap.data();
         const item = document.createElement("div");
         item.className = "item";
-        item.dataset.docId = docSnap.id;
-        item.dataset.collection = col;
 
         const header = `
           <div class="item-header">
@@ -285,7 +296,7 @@
           urlField = `
             <div class="field-group">
               <label>URL</label>
-              <input class="url" value="${(data.url ?? "")}">
+              <input class="url" value="${data.url ?? ""}">
             </div>
           `;
         }
@@ -310,6 +321,20 @@
           `;
         }
 
+        // Extra fält (read-only för de flesta)
+        let extraFieldsHTML = '<div class="extra-fields"><h3 style="margin-bottom:1rem;color:var(--primary);">Övriga fält</h3>';
+        Object.entries(data).forEach(([key, value]) => {
+          if (key !== 'title' && key !== 'description' && key !== 'url' && key !== 'subTasks') {
+            extraFieldsHTML += `
+              <div class="extra-field">
+                <label>${key}</label>
+                <input type="text" value="${typeof value === 'object' ? JSON.stringify(value, null, 2) : value}" readonly>
+              </div>
+            `;
+          }
+        });
+        extraFieldsHTML += '</div>';
+
         item.innerHTML = `
           ${header}
           <div class="field-group">
@@ -322,18 +347,19 @@
           </div>
           ${urlField}
           ${subtasksHTML}
+          ${extraFieldsHTML}
           <div class="actions">
             <button class="btn btn-primary save"><i class="fas fa-save"></i> Spara</button>
             <button class="btn btn-danger del"><i class="fas fa-trash"></i> Radera</button>
           </div>
         `;
 
-        // Lägg till subtask (endast tasks)
+        // Lägg till subtask
         item.querySelector(".addSub")?.addEventListener("click", () => {
           const subTasks = data.subTasks || [];
           subTasks.push({ title: "", isCompleted: false });
-          data.subTasks = subTasks; // Uppdatera lokal data
-          $("loadBtn").click();     // Ladda om för att visa nya fältet
+          data.subTasks = subTasks;
+          $("loadBtn").click();
         });
 
         // Spara
@@ -351,17 +377,16 @@
           if (col === "tasks") {
             const subTitles = item.querySelectorAll(".subTitle");
             const subDones  = item.querySelectorAll(".subDone");
-            const subTasks = Array.from(subTitles).map((input, i) => ({
+            updateData.subTasks = Array.from(subTitles).map((input, i) => ({
               title: input.value,
               isCompleted: subDones[i].checked
             }));
-            updateData.subTasks = subTasks;
           }
 
           try {
             await updateDoc(doc(db, "workspace", "shared", col, docSnap.id), updateData);
             alert("Sparat ✓");
-            $("loadBtn").click(); // Uppdatera vy efter spara
+            $("loadBtn").click(); // Uppdatera vyn
           } catch (e) {
             alert("Kunde inte spara: " + e.message);
           }
