@@ -112,10 +112,7 @@
       margin-bottom: 1.25rem;
       transition: all 0.2s;
     }
-    .item:hover {
-      background: var(--surface);
-      border-color: var(--primary);
-    }
+    .item:hover { background: var(--surface); border-color: var(--primary); }
 
     .item-header {
       display: flex;
@@ -129,9 +126,7 @@
       color: var(--text-muted);
     }
 
-    .field-group {
-      margin-bottom: 1.5rem;
-    }
+    .field-group { margin-bottom: 1.5rem; }
 
     .subtasks {
       margin: 1.5rem 0;
@@ -150,10 +145,6 @@
       margin-bottom: 0.75rem;
     }
     .subtask input[type="text"] { flex: 1; }
-
-    .add-sub-btn {
-      margin-top: 0.75rem;
-    }
 
     .actions {
       display: flex;
@@ -255,12 +246,19 @@
 
     $("logoutBtn").onclick = () => signOut(auth);
 
+    // Ladda data
     $("loadBtn").onclick = async () => {
       const list = $("list");
       list.innerHTML = '<p style="text-align:center; color:var(--text-muted);">Laddar...</p>';
 
       const col = $("collection").value;
-      const snap = await getDocs(collection(db, "workspace", "shared", col));
+      let snap;
+      try {
+        snap = await getDocs(collection(db, "workspace", "shared", col));
+      } catch (e) {
+        list.innerHTML = `<p style="text-align:center; color:#ef4444;">Fel vid laddning: ${e.message}</p>`;
+        return;
+      }
 
       list.innerHTML = "";
 
@@ -274,19 +272,20 @@
         const item = document.createElement("div");
         item.className = "item";
         item.dataset.docId = docSnap.id;
+        item.dataset.collection = col;
 
-        const commonHeader = `
+        const header = `
           <div class="item-header">
             <div class="item-id">ID: ${data.id ?? docSnap.id}</div>
           </div>
         `;
 
-        let extraFields = "";
+        let urlField = "";
         if (col === "bookmarks") {
-          extraFields = `
+          urlField = `
             <div class="field-group">
               <label>URL</label>
-              <input class="url" value="${data.url ?? ""}">
+              <input class="url" value="${(data.url ?? "")}">
             </div>
           `;
         }
@@ -306,13 +305,13 @@
                   </label>
                 </div>
               `).join("")}
-              <button class="btn btn-secondary addSub add-sub-btn"><i class="fas fa-plus"></i> Lägg till SubTask</button>
+              <button class="btn btn-secondary addSub"><i class="fas fa-plus"></i> Lägg till SubTask</button>
             </div>
           `;
         }
 
         item.innerHTML = `
-          ${commonHeader}
+          ${header}
           <div class="field-group">
             <label>Titel</label>
             <input class="title" value="${data.title ?? ""}">
@@ -321,7 +320,7 @@
             <label>Beskrivning</label>
             <textarea class="desc">${data.description ?? ""}</textarea>
           </div>
-          ${extraFields}
+          ${urlField}
           ${subtasksHTML}
           <div class="actions">
             <button class="btn btn-primary save"><i class="fas fa-save"></i> Spara</button>
@@ -329,8 +328,16 @@
           </div>
         `;
 
-        // SAVE
-        item.querySelector(".save").onclick = async () => {
+        // Lägg till subtask (endast tasks)
+        item.querySelector(".addSub")?.addEventListener("click", () => {
+          const subTasks = data.subTasks || [];
+          subTasks.push({ title: "", isCompleted: false });
+          data.subTasks = subTasks; // Uppdatera lokal data
+          $("loadBtn").click();     // Ladda om för att visa nya fältet
+        });
+
+        // Spara
+        item.querySelector(".save").addEventListener("click", async () => {
           const updateData = {
             title: item.querySelector(".title")?.value ?? "",
             description: item.querySelector(".desc")?.value ?? "",
@@ -342,12 +349,11 @@
           }
 
           if (col === "tasks") {
-            const titles = item.querySelectorAll(".subTitle");
-            const dones = item.querySelectorAll(".subDone");
-            const subTasks = (data.subTasks ?? []).map((s, i) => ({
-              ...s,
-              title: titles[i]?.value || "",
-              isCompleted: dones[i]?.checked || false
+            const subTitles = item.querySelectorAll(".subTitle");
+            const subDones  = item.querySelectorAll(".subDone");
+            const subTasks = Array.from(subTitles).map((input, i) => ({
+              title: input.value,
+              isCompleted: subDones[i].checked
             }));
             updateData.subTasks = subTasks;
           }
@@ -355,20 +361,14 @@
           try {
             await updateDoc(doc(db, "workspace", "shared", col, docSnap.id), updateData);
             alert("Sparat ✓");
+            $("loadBtn").click(); // Uppdatera vy efter spara
           } catch (e) {
             alert("Kunde inte spara: " + e.message);
           }
-        };
+        });
 
-        // ADD SUBTASK (only tasks)
-        item.querySelector(".addSub")?.onclick = () => {
-          data.subTasks = data.subTasks || [];
-          data.subTasks.push({ title: "", isCompleted: false });
-          $("loadBtn").click(); // Reload för att visa nya fältet
-        };
-
-        // DELETE
-        item.querySelector(".del").onclick = async () => {
+        // Radera
+        item.querySelector(".del").addEventListener("click", async () => {
           if (!confirm("Är du säker på att du vill radera denna post?")) return;
           try {
             await deleteDoc(doc(db, "workspace", "shared", col, docSnap.id));
@@ -376,7 +376,7 @@
           } catch (e) {
             alert("Kunde inte radera: " + e.message);
           }
-        };
+        });
 
         list.appendChild(item);
       });
