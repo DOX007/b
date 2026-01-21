@@ -32,12 +32,7 @@
       }
     }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
+    * { box-sizing: border-box; margin:0; padding:0; }
     body {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: var(--bg);
@@ -46,23 +41,9 @@
       padding: 2rem 1rem;
       line-height: 1.5;
     }
-
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-
-    header {
-      text-align: center;
-      margin-bottom: 2.5rem;
-    }
-
-    h1 {
-      font-size: 2.25rem;
-      font-weight: 700;
-      color: var(--primary);
-      margin-bottom: 0.5rem;
-    }
+    .container { max-width: 1200px; margin: 0 auto; }
+    header { text-align: center; margin-bottom: 2.5rem; }
+    h1 { font-size: 2.25rem; font-weight: 700; color: var(--primary); margin-bottom: 0.5rem; }
 
     .card {
       background: var(--surface);
@@ -73,20 +54,9 @@
       margin-bottom: 1.75rem;
       transition: all 0.2s ease;
     }
+    .card:hover { transform: translateY(-2px); box-shadow: 0 15px 35px -10px rgba(0,0,0,0.5); }
 
-    .card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 15px 35px -10px rgba(0,0,0,0.5);
-    }
-
-    h2 {
-      font-size: 1.35rem;
-      margin-bottom: 1.25rem;
-      color: var(--primary);
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-    }
+    h2 { font-size: 1.35rem; margin-bottom: 1.25rem; color: var(--primary); display: flex; align-items: center; gap: 0.75rem; }
 
     .form-grid {
       display: grid;
@@ -95,13 +65,7 @@
       margin-bottom: 1.25rem;
     }
 
-    label {
-      display: block;
-      font-size: 0.875rem;
-      font-weight: 500;
-      margin-bottom: 0.4rem;
-      color: var(--text-muted);
-    }
+    label { display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.4rem; color: var(--text-muted); }
 
     input, textarea, select {
       width: 100%;
@@ -113,18 +77,12 @@
       font: inherit;
       transition: border-color 0.2s;
     }
-
     input:focus, textarea:focus, select:focus {
       outline: none;
       border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.2);
     }
-
-    textarea {
-      min-height: 100px;
-      font-family: ui-monospace, monospace;
-      resize: vertical;
-    }
+    textarea { min-height: 100px; font-family: ui-monospace, monospace; resize: vertical; }
 
     .btn {
       padding: 0.75rem 1.25rem;
@@ -137,40 +95,14 @@
       align-items: center;
       gap: 0.5rem;
     }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-secondary { background: var(--surface-hover); color: var(--text); }
+    .btn-secondary:hover { background: #475569; }
+    .btn-danger { background: var(--danger); color: white; }
+    .btn-danger:hover { background: var(--danger-dark); }
 
-    .btn-primary {
-      background: var(--primary);
-      color: white;
-    }
-
-    .btn-primary:hover {
-      background: var(--primary-dark);
-    }
-
-    .btn-secondary {
-      background: var(--surface-hover);
-      color: var(--text);
-    }
-
-    .btn-secondary:hover {
-      background: #475569;
-    }
-
-    .btn-danger {
-      background: var(--danger);
-      color: white;
-    }
-
-    .btn-danger:hover {
-      background: var(--danger-dark);
-    }
-
-    .auth-status {
-      text-align: center;
-      font-size: 0.95rem;
-      margin-top: 1rem;
-      color: var(--text-muted);
-    }
+    .auth-status { text-align: center; font-size: 0.95rem; margin-top: 1rem; color: var(--text-muted); }
 
     .item {
       background: var(--surface-hover);
@@ -180,7 +112,6 @@
       margin-bottom: 1.25rem;
       transition: all 0.2s;
     }
-
     .item:hover {
       background: var(--surface);
       border-color: var(--primary);
@@ -192,17 +123,13 @@
       align-items: center;
       margin-bottom: 1rem;
     }
-
     .item-id {
       font-family: ui-monospace;
       font-size: 0.85rem;
       color: var(--text-muted);
     }
 
-    .subtasks {
-      margin: 1.25rem 0;
-    }
-
+    .subtasks { margin: 1.25rem 0; }
     .subtask {
       display: flex;
       align-items: center;
@@ -213,10 +140,7 @@
       padding: 0.75rem 1rem;
       margin-bottom: 0.75rem;
     }
-
-    .subtask input[type="text"] {
-      flex: 1;
-    }
+    .subtask input[type="text"] { flex: 1; }
 
     .actions {
       display: flex;
@@ -225,16 +149,20 @@
       flex-wrap: wrap;
     }
 
+    .json-view {
+      background: #0002;
+      padding: 1rem;
+      border-radius: 8px;
+      font-family: ui-monospace;
+      font-size: 0.9rem;
+      white-space: pre-wrap;
+      overflow-x: auto;
+    }
+
     @media (max-width: 640px) {
-      .form-grid {
-        grid-template-columns: 1fr;
-      }
-      .actions {
-        flex-direction: column;
-      }
-      .btn {
-        width: 100%;
-      }
+      .form-grid { grid-template-columns: 1fr; }
+      .actions { flex-direction: column; }
+      .btn { width: 100%; }
     }
   </style>
 </head>
@@ -308,7 +236,6 @@
 
     const $ = id => document.getElementById(id);
 
-    // Auth state
     onAuthStateChanged(auth, user => {
       $("authMsg").textContent = user 
         ? `Inloggad som: ${user.email}` 
@@ -325,7 +252,6 @@
 
     $("logoutBtn").onclick = () => signOut(auth);
 
-    // Load data
     $("loadBtn").onclick = async () => {
       const list = $("list");
       list.innerHTML = '<p style="text-align:center; color:var(--text-muted);">Laddar...</p>';
@@ -345,13 +271,17 @@
         const item = document.createElement("div");
         item.className = "item";
 
+        const commonHeader = `
+          <div class="item-header">
+            <div class="item-id">ID: ${data.id ?? docSnap.id}</div>
+          </div>
+        `;
+
+        let contentHTML = "";
+
         if (col === "tasks") {
           const subTasks = data.subTasks ?? [];
-          
-          item.innerHTML = `
-            <div class="item-header">
-              <div class="item-id">ID: ${data.id}</div>
-            </div>
+          contentHTML = `
             <label>Titel</label>
             <input class="title" value="${data.title ?? ""}">
             
@@ -372,59 +302,80 @@
             </div>
             
             <button class="btn btn-secondary addSub"><i class="fas fa-plus"></i> Lägg till SubTask</button>
-            
-            <div class="actions">
-              <button class="btn btn-primary save"><i class="fas fa-save"></i> Spara</button>
-              <button class="btn btn-danger del"><i class="fas fa-trash"></i> Radera</button>
-            </div>
           `;
-
-          // Add subtask
-          item.querySelector(".addSub").onclick = () => {
-            subTasks.push({ title: "", isCompleted: false });
-            $("loadBtn").click();
-          };
-
-          // Save
-          item.querySelector(".save").onclick = async () => {
-            const titles = item.querySelectorAll(".subTitle");
-            const dones = item.querySelectorAll(".subDone");
-
-            const newSubs = subTasks.map((s, i) => ({
-              ...s,
-              title: titles[i]?.value || "",
-              isCompleted: dones[i]?.checked || false
-            }));
-
-            try {
-              await updateDoc(doc(db, "workspace", "shared", col, docSnap.id), {
-                title: item.querySelector(".title").value,
-                description: item.querySelector(".desc").value,
-                subTasks: newSubs,
-                updatedDate: Date.now()
-              });
-              alert("Sparat ✓");
-            } catch (e) {
-              alert("Kunde inte spara: " + e.message);
-            }
-          };
-        } else {
+        } 
+        else if (col === "notes" || col === "bookmarks") {
+          contentHTML = `
+            <label>Titel</label>
+            <input class="title" value="${data.title ?? ""}">
+            
+            <label>Beskrivning</label>
+            <textarea class="desc">${data.description ?? ""}</textarea>
+            
+            ${col === "bookmarks" ? `
+              <label>URL</label>
+              <input class="url" value="${data.url ?? ""}">
+            ` : ""}
+          `;
+        } 
+        else {
           // Fallback för andra collections
-          item.innerHTML = `
-            <div class="item-header">
-              <div class="item-id">ID: ${data.id}</div>
-            </div>
-            <pre style="background:#0002; padding:1rem; border-radius:8px; overflow:auto;">
+          contentHTML = `
+            <div class="json-view">
               ${JSON.stringify(data, null, 2)}
-            </pre>
-            <div class="actions">
-              <button class="btn btn-danger del"><i class="fas fa-trash"></i> Radera</button>
             </div>
           `;
         }
 
-        // Delete (gemensamt)
-        item.querySelector(".del")?.addEventListener("click", async () => {
+        item.innerHTML = `
+          ${commonHeader}
+          ${contentHTML}
+          <div class="actions">
+            <button class="btn btn-primary save"><i class="fas fa-save"></i> Spara</button>
+            <button class="btn btn-danger del"><i class="fas fa-trash"></i> Radera</button>
+          </div>
+        `;
+
+        // SAVE - gemensamt för tasks, notes & bookmarks
+        item.querySelector(".save").onclick = async () => {
+          const updateData = {
+            title: item.querySelector(".title")?.value ?? "",
+            description: item.querySelector(".desc")?.value ?? "",
+            updatedDate: Date.now()
+          };
+
+          if (col === "tasks") {
+            const titles = item.querySelectorAll(".subTitle");
+            const dones = item.querySelectorAll(".subDone");
+            const subTasks = (data.subTasks ?? []).map((s, i) => ({
+              ...s,
+              title: titles[i]?.value || "",
+              isCompleted: dones[i]?.checked || false
+            }));
+            updateData.subTasks = subTasks;
+          }
+
+          if (col === "bookmarks") {
+            updateData.url = item.querySelector(".url")?.value ?? "";
+          }
+
+          try {
+            await updateDoc(doc(db, "workspace", "shared", col, docSnap.id), updateData);
+            alert("Sparat ✓");
+          } catch (e) {
+            alert("Kunde inte spara: " + e.message);
+          }
+        };
+
+        // ADD SUBTASK (endast tasks)
+        item.querySelector(".addSub")?.onclick = () => {
+          data.subTasks = data.subTasks || [];
+          data.subTasks.push({ title: "", isCompleted: false });
+          $("loadBtn").click();
+        };
+
+        // DELETE
+        item.querySelector(".del").onclick = async () => {
           if (!confirm("Är du säker på att du vill radera denna post?")) return;
           try {
             await deleteDoc(doc(db, "workspace", "shared", col, docSnap.id));
@@ -432,7 +383,7 @@
           } catch (e) {
             alert("Kunde inte radera: " + e.message);
           }
-        });
+        };
 
         list.appendChild(item);
       });
