@@ -1,193 +1,442 @@
 <!doctype html>
 <html lang="sv">
 <head>
-<meta charset="utf-8">
-<title>VordNotes – Data Admin</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-
-<style>
-:root { color-scheme: dark light; }
-body {
-  font-family: system-ui, sans-serif;
-  max-width: 1200px;
-  margin: 24px auto;
-  padding: 0 16px;
-}
-section {
-  border: 1px solid #333;
-  border-radius: 12px;
-  padding: 16px;
-  margin: 16px 0;
-}
-label { font-size: 13px; opacity:.8; display:block; margin-top:8px; }
-input, textarea, select, button {
-  font: inherit;
-  padding: 8px;
-  border-radius: 8px;
-  width:100%;
-}
-textarea { resize: vertical; font-family: ui-monospace; }
-button { background:#111827; color:white; border:none; cursor:pointer; }
-button.secondary { background:#6b7280; }
-button.danger { background:#991b1b; }
-.row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-.item { border:1px solid #444; border-radius:8px; padding:14px; margin:14px 0; }
-.mono { font-family: ui-monospace; font-size:13px; }
-.subtask {
-  border:1px dashed #555;
-  padding:8px;
-  margin:6px 0;
-}
-.bar { display:flex; gap:10px; margin-top:12px; }
-</style>
-</head>
-
-<body>
-
-<h1>VordNotes – Data Admin</h1>
-
-<section>
-<h2>Inloggning</h2>
-<div class="row">
-  <input id="email" placeholder="email">
-  <input id="password" type="password" placeholder="lösenord">
-  <button id="loginBtn">Logga in</button>
-  <button id="logoutBtn" class="secondary">Logga ut</button>
-</div>
-<p id="authMsg"></p>
-</section>
-
-<section>
-<h2>Databas</h2>
-<div class="row">
-  <select id="collection">
-    <option value="notes">notes</option>
-    <option value="tasks">tasks</option>
-    <option value="bookmarks">bookmarks</option>
-  </select>
-  <button id="loadBtn">Ladda data</button>
-</div>
-</section>
-
-<section>
-<h2>Poster</h2>
-<div id="list"></div>
-</section>
-
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
-from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, collection, getDocs, doc, updateDoc, deleteDoc }
-from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyD837dSDubNSKKRxZuxaOym25vF87eTfqI",
-  authDomain: "vordnotes.firebaseapp.com",
-  projectId: "vordnotes",
-  storageBucket: "vordnotes.appspot.com",
-  messagingSenderId: "336975924503",
-  appId: "1:336975924503:web:e283bcb380ce1e56dc3b52"
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-
-const $ = id => document.getElementById(id);
-
-onAuthStateChanged(auth, u => {
-  $("authMsg").textContent = u ? `Inloggad: ${u.email}` : "Inte inloggad";
-});
-
-$("loginBtn").onclick = () =>
-  signInWithEmailAndPassword(auth, $("email").value, $("password").value);
-
-$("logoutBtn").onclick = () => signOut(auth);
-
-$("loadBtn").onclick = async () => {
-  $("list").innerHTML = "";
-  const col = $("collection").value;
-
-  const snap = await getDocs(
-    collection(db, "workspace", "shared", col)
-  );
-
-  snap.forEach(d => {
-    const data = d.data();
-    const el = document.createElement("div");
-    el.className = "item";
-
-    if (col === "tasks") {
-      const subTasks = data.subTasks ?? [];
-
-      el.innerHTML = `
-        <div class="mono">ID: ${data.id}</div>
-
-        <label>Titel</label>
-        <input class="title" value="${data.title ?? ""}">
-
-        <label>Beskrivning</label>
-        <textarea class="desc">${data.description ?? ""}</textarea>
-
-        <label>SubTasks (mediciner)</label>
-        <div class="subs">
-          ${subTasks.map((s, i) => `
-            <div class="subtask">
-              <input class="subTitle" data-i="${i}" value="${s.title ?? ""}">
-              <label>
-                <input type="checkbox" class="subDone" data-i="${i}" ${s.isCompleted ? "checked" : ""}>
-                Klar
-              </label>
-            </div>
-          `).join("")}
-        </div>
-
-        <button class="secondary addSub">+ Lägg till SubTask</button>
-
-        <div class="bar">
-          <button class="save">Spara</button>
-          <button class="danger del">Radera</button>
-        </div>
-      `;
-
-      el.querySelector(".addSub").onclick = () => {
-        subTasks.push({ title:"", isCompleted:false });
-        $("loadBtn").click();
-      };
-
-      el.querySelector(".save").onclick = async () => {
-        const titles = el.querySelectorAll(".subTitle");
-        const dones  = el.querySelectorAll(".subDone");
-
-        const newSubs = subTasks.map((s, i) => ({
-          ...s,
-          title: titles[i].value,
-          isCompleted: dones[i].checked
-        }));
-
-        await updateDoc(
-          doc(db, "workspace", "shared", col, d.id),
-          {
-            title: el.querySelector(".title").value,
-            description: el.querySelector(".desc").value,
-            subTasks: newSubs,
-            updatedDate: Date.now()
-          }
-        );
-        alert("Sparat ✔");
-      };
+  <meta charset="utf-8">
+  <title>VordNotes – Data Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    :root {
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --surface-hover: #334155;
+      --text: #e2e8f0;
+      --text-muted: #94a3b8;
+      --primary: #3b82f6;
+      --primary-dark: #2563eb;
+      --danger: #ef4444;
+      --danger-dark: #dc2626;
+      --border: #334155;
+      --radius: 12px;
+      --shadow: 0 10px 25px -5px rgba(0,0,0,0.4);
     }
 
-    el.querySelector(".del")?.addEventListener("click", async () => {
-      if (!confirm("Radera posten?")) return;
-      await deleteDoc(doc(db, "workspace", "shared", col, d.id));
-      el.remove();
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f8fafc;
+        --surface: #ffffff;
+        --surface-hover: #f1f5f9;
+        --text: #0f172a;
+        --text-muted: #64748b;
+        --border: #e2e8f0;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem 1rem;
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+
+    h1 {
+      font-size: 2.25rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 0.5rem;
+    }
+
+    .card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      padding: 1.75rem;
+      margin-bottom: 1.75rem;
+      transition: all 0.2s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 15px 35px -10px rgba(0,0,0,0.5);
+    }
+
+    h2 {
+      font-size: 1.35rem;
+      margin-bottom: 1.25rem;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+
+    label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 500;
+      margin-bottom: 0.4rem;
+      color: var(--text-muted);
+    }
+
+    input, textarea, select {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--text);
+      font: inherit;
+      transition: border-color 0.2s;
+    }
+
+    input:focus, textarea:focus, select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+    }
+
+    textarea {
+      min-height: 100px;
+      font-family: ui-monospace, monospace;
+      resize: vertical;
+    }
+
+    .btn {
+      padding: 0.75rem 1.25rem;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-dark);
+    }
+
+    .btn-secondary {
+      background: var(--surface-hover);
+      color: var(--text);
+    }
+
+    .btn-secondary:hover {
+      background: #475569;
+    }
+
+    .btn-danger {
+      background: var(--danger);
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: var(--danger-dark);
+    }
+
+    .auth-status {
+      text-align: center;
+      font-size: 0.95rem;
+      margin-top: 1rem;
+      color: var(--text-muted);
+    }
+
+    .item {
+      background: var(--surface-hover);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.5rem;
+      margin-bottom: 1.25rem;
+      transition: all 0.2s;
+    }
+
+    .item:hover {
+      background: var(--surface);
+      border-color: var(--primary);
+    }
+
+    .item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .item-id {
+      font-family: ui-monospace;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .subtasks {
+      margin: 1.25rem 0;
+    }
+
+    .subtask {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      background: var(--surface);
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .subtask input[type="text"] {
+      flex: 1;
+    }
+
+    .actions {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    @media (max-width: 640px) {
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+      .actions {
+        flex-direction: column;
+      }
+      .btn {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>VordNotes</h1>
+      <p style="color: var(--text-muted); font-size: 1.1rem;">Data Administration</p>
+    </header>
+
+    <!-- AUTH -->
+    <div class="card">
+      <h2><i class="fas fa-user-lock"></i> Autentisering</h2>
+      <div class="form-grid">
+        <div>
+          <label for="email">E-post</label>
+          <input id="email" type="email" placeholder="din@email.com">
+        </div>
+        <div>
+          <label for="password">Lösenord</label>
+          <input id="password" type="password" placeholder="••••••••">
+        </div>
+      </div>
+      <div class="actions">
+        <button id="loginBtn" class="btn btn-primary"><i class="fas fa-sign-in-alt"></i> Logga in</button>
+        <button id="logoutBtn" class="btn btn-secondary"><i class="fas fa-sign-out-alt"></i> Logga ut</button>
+      </div>
+      <div id="authMsg" class="auth-status">Inte inloggad</div>
+    </div>
+
+    <!-- DATABASE -->
+    <div class="card">
+      <h2><i class="fas fa-database"></i> Databas</h2>
+      <div class="form-grid">
+        <div>
+          <label for="collection">Samling</label>
+          <select id="collection">
+            <option value="notes">Notes</option>
+            <option value="tasks">Tasks</option>
+            <option value="bookmarks">Bookmarks</option>
+          </select>
+        </div>
+      </div>
+      <button id="loadBtn" class="btn btn-primary"><i class="fas fa-download"></i> Ladda data</button>
+    </div>
+
+    <!-- ITEMS -->
+    <div class="card">
+      <h2><i class="fas fa-list"></i> Poster</h2>
+      <div id="list"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import { getFirestore, collection, getDocs, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD837dSDubNSKKRxZuxaOym25vF87eTfqI",
+      authDomain: "vordnotes.firebaseapp.com",
+      projectId: "vordnotes",
+      storageBucket: "vordnotes.appspot.com",
+      messagingSenderId: "336975924503",
+      appId: "1:336975924503:web:e283bcb380ce1e56dc3b52"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const $ = id => document.getElementById(id);
+
+    // Auth state
+    onAuthStateChanged(auth, user => {
+      $("authMsg").textContent = user 
+        ? `Inloggad som: ${user.email}` 
+        : "Inte inloggad";
     });
 
-    $("list").appendChild(el);
-  });
-};
-</script>
+    $("loginBtn").onclick = async () => {
+      try {
+        await signInWithEmailAndPassword(auth, $("email").value, $("password").value);
+      } catch (e) {
+        alert("Inloggning misslyckades: " + e.message);
+      }
+    };
+
+    $("logoutBtn").onclick = () => signOut(auth);
+
+    // Load data
+    $("loadBtn").onclick = async () => {
+      const list = $("list");
+      list.innerHTML = '<p style="text-align:center; color:var(--text-muted);">Laddar...</p>';
+
+      const col = $("collection").value;
+      const snap = await getDocs(collection(db, "workspace", "shared", col));
+
+      list.innerHTML = "";
+
+      if (snap.empty) {
+        list.innerHTML = '<p style="text-align:center; color:var(--text-muted);">Inga poster hittades</p>';
+        return;
+      }
+
+      snap.forEach(docSnap => {
+        const data = docSnap.data();
+        const item = document.createElement("div");
+        item.className = "item";
+
+        if (col === "tasks") {
+          const subTasks = data.subTasks ?? [];
+          
+          item.innerHTML = `
+            <div class="item-header">
+              <div class="item-id">ID: ${data.id}</div>
+            </div>
+            <label>Titel</label>
+            <input class="title" value="${data.title ?? ""}">
+            
+            <label>Beskrivning</label>
+            <textarea class="desc">${data.description ?? ""}</textarea>
+            
+            <div class="subtasks">
+              <label>SubTasks (mediciner)</label>
+              ${subTasks.map((s, i) => `
+                <div class="subtask">
+                  <input type="text" class="subTitle" data-i="${i}" value="${s.title ?? ""}">
+                  <label style="display:flex; align-items:center; gap:0.5rem; white-space:nowrap;">
+                    <input type="checkbox" class="subDone" data-i="${i}" ${s.isCompleted ? "checked" : ""}>
+                    Klar
+                  </label>
+                </div>
+              `).join("")}
+            </div>
+            
+            <button class="btn btn-secondary addSub"><i class="fas fa-plus"></i> Lägg till SubTask</button>
+            
+            <div class="actions">
+              <button class="btn btn-primary save"><i class="fas fa-save"></i> Spara</button>
+              <button class="btn btn-danger del"><i class="fas fa-trash"></i> Radera</button>
+            </div>
+          `;
+
+          // Add subtask
+          item.querySelector(".addSub").onclick = () => {
+            subTasks.push({ title: "", isCompleted: false });
+            $("loadBtn").click();
+          };
+
+          // Save
+          item.querySelector(".save").onclick = async () => {
+            const titles = item.querySelectorAll(".subTitle");
+            const dones = item.querySelectorAll(".subDone");
+
+            const newSubs = subTasks.map((s, i) => ({
+              ...s,
+              title: titles[i]?.value || "",
+              isCompleted: dones[i]?.checked || false
+            }));
+
+            try {
+              await updateDoc(doc(db, "workspace", "shared", col, docSnap.id), {
+                title: item.querySelector(".title").value,
+                description: item.querySelector(".desc").value,
+                subTasks: newSubs,
+                updatedDate: Date.now()
+              });
+              alert("Sparat ✓");
+            } catch (e) {
+              alert("Kunde inte spara: " + e.message);
+            }
+          };
+        } else {
+          // Fallback för andra collections
+          item.innerHTML = `
+            <div class="item-header">
+              <div class="item-id">ID: ${data.id}</div>
+            </div>
+            <pre style="background:#0002; padding:1rem; border-radius:8px; overflow:auto;">
+              ${JSON.stringify(data, null, 2)}
+            </pre>
+            <div class="actions">
+              <button class="btn btn-danger del"><i class="fas fa-trash"></i> Radera</button>
+            </div>
+          `;
+        }
+
+        // Delete (gemensamt)
+        item.querySelector(".del")?.addEventListener("click", async () => {
+          if (!confirm("Är du säker på att du vill radera denna post?")) return;
+          try {
+            await deleteDoc(doc(db, "workspace", "shared", col, docSnap.id));
+            item.remove();
+          } catch (e) {
+            alert("Kunde inte radera: " + e.message);
+          }
+        });
+
+        list.appendChild(item);
+      });
+    };
+  </script>
 </body>
 </html>
